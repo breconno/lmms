@@ -33,6 +33,7 @@
 #include "embed.h"
 #include "GroupBox.h"
 #include "LcdSpinBox.h"
+#include "LedCheckBox.h"
 #include "MidiClient.h"
 
 namespace lmms::gui
@@ -114,6 +115,11 @@ InstrumentMidiIOView::InstrumentMidiIOView( QWidget* parent ) :
 	m_fixedOutputNoteSpinBox->setLabel( tr( "NOTE" ) );
 	m_fixedOutputNoteSpinBox->setEnabled( false );
 	midiOutputLayout->addWidget( m_fixedOutputNoteSpinBox );
+
+	m_midiThruCheckBox = new LedCheckBox( tr( "THRU" ), m_midiOutputGroupBox );
+	m_midiThruCheckBox->setToolTip( tr( "Echo notes received from MIDI input to the MIDI output" ) );
+	m_midiThruCheckBox->setEnabled( false );
+	midiOutputLayout->addWidget( m_midiThruCheckBox );
 	midiOutputLayout->addStretch();
 
 	connect( m_midiOutputGroupBox->ledButton(), SIGNAL(toggled(bool)),
@@ -122,6 +128,8 @@ InstrumentMidiIOView::InstrumentMidiIOView( QWidget* parent ) :
 			m_outputProgramSpinBox, SLOT(setEnabled(bool)));
 	connect( m_midiOutputGroupBox->ledButton(), SIGNAL(toggled(bool)),
 		m_fixedOutputNoteSpinBox, SLOT(setEnabled(bool)));
+	connect( m_midiOutputGroupBox->ledButton(), SIGNAL(toggled(bool)),
+		m_midiThruCheckBox, SLOT(setEnabled(bool)));
 
 	if( !Engine::audioEngine()->midiClient()->isRaw() )
 	{

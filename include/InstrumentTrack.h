@@ -242,6 +242,11 @@ public:
 		return &m_useMasterPitchModel;
 	}
 
+	BoolModel* midiThruModel()
+	{
+		return m_midiThruEnable.get();
+	}
+
 	void setPreviewMode( const bool );
 
 	bool isPreviewMode() const
@@ -329,6 +334,9 @@ private:
 
 	std::unique_ptr<BoolModel> m_midiCCEnable;
 	std::unique_ptr<FloatModel> m_midiCCModel[MidiControllerCount];
+
+	//! When disabled, notes received from MIDI input are not echoed to the MIDI output port
+	std::unique_ptr<BoolModel> m_midiThruEnable;
 
 	friend class gui::InstrumentTrackView;
 	friend class gui::InstrumentTrackWindow;

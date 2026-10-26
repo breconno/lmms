@@ -79,6 +79,7 @@ NotePlayHandle::NotePlayHandle( InstrumentTrack* instrumentTrack,
 	m_songGlobalParentOffset( 0 ),
 	m_midiChannel( midiEventChannel >= 0 ? midiEventChannel : instrumentTrack->midiPort()->realOutputChannel() ),
 	m_origin( origin ),
+	m_fromMidiInput( origin == Origin::MidiInput || ( parent != nullptr && parent->m_fromMidiInput ) ),
 	m_frequencyNeedsUpdate( false )
 {
 	lock();
@@ -161,7 +162,7 @@ void NotePlayHandle::setVolume( volume_t _volume )
 
 	const int baseVelocity = m_instrumentTrack->midiPort()->baseVelocity();
 
-	m_instrumentTrack->processOutEvent( MidiEvent( MidiKeyPressure, midiChannel(), midiKey(), midiVelocity( baseVelocity ) ) );
+	m_instrumentTrack->processOutEvent( MidiEvent( MidiKeyPressure, midiChannel(), midiKey(), midiVelocity( baseVelocity ), nullptr, midiEventSource() ) );
 }
 
 
@@ -229,7 +230,7 @@ void NotePlayHandle::play( SampleFrame* _working_buffer )
 
 		// send MidiNoteOn event
 		m_instrumentTrack->processOutEvent(
-			MidiEvent( MidiNoteOn, midiChannel(), midiKey(), midiVelocity( baseVelocity ) ),
+			MidiEvent( MidiNoteOn, midiChannel(), midiKey(), midiVelocity( baseVelocity ), nullptr, midiEventSource() ),
 			TimePos::fromFrames( offset(), Engine::framesPerTick() ),
 			offset() );
 	}
@@ -392,7 +393,7 @@ void NotePlayHandle::noteOff( const f_cnt_t _s )
 
 		// send MidiNoteOff event
 		m_instrumentTrack->processOutEvent(
-				MidiEvent( MidiNoteOff, midiChannel(), midiKey(), 0 ),
+				MidiEvent( MidiNoteOff, midiChannel(), midiKey(), 0, nullptr, midiEventSource() ),
 				TimePos::fromFrames( _s, Engine::framesPerTick() ),
 				_s );
 	}

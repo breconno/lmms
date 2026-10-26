@@ -92,6 +92,9 @@ InstrumentTrack::InstrumentTrack(TrackContainer* tc) :
 	// to a LedButton
 	m_midiCCEnable = std::make_unique<BoolModel>(false, nullptr, tr("Enable/Disable MIDI CC"));
 
+	// MIDI Thru is on by default, which keeps the behavior of projects saved without it
+	m_midiThruEnable = std::make_unique<BoolModel>(true, nullptr, tr("MIDI Thru"));
+
 	// Initialize the MIDI CC controller models and connect them to the method that processes
 	// the midi cc events
 	for (int i = 0; i < MidiControllerCount; ++i)
@@ -504,6 +507,12 @@ void InstrumentTrack::processOutEvent( const MidiEvent& event, const TimePos& ti
 			break;
 	}
 
+	// with MIDI Thru disabled, notes coming from MIDI input are not echoed to the output port;
+	// note-offs still pass so that toggling Thru while a key is held can't leave a note stuck
+	const bool isInputNote = event.source() == MidiEvent::Source::External
+		&& (event.type() == MidiNoteOn || event.type() == MidiKeyPressure);
+	if (isInputNote && !m_midiThruEnable->value()) { return; }
+
 	// if appropriate, midi-port does further routing
 	m_midiPort.processOutEvent( event, time );
 }
@@ -831,6 +840,7 @@ void InstrumentTrack::saveTrackSpecificSettings(QDomDocument& doc, QDomElement& 
 
 	// Save MIDI CC stuff
 	m_midiCCEnable->saveSettings(doc, thisElement, "enablecc");
+	m_midiThruEnable->saveSettings(doc, thisElement, "midithru");
 	QDomElement midiCC = doc.createElement("midicontrollers");
 	thisElement.appendChild(midiCC);
 	for (int i = 0; i < MidiControllerCount; ++i)
@@ -983,6 +993,7 @@ void InstrumentTrack::loadTrackSpecificSettings( const QDomElement & thisElement
 
 	// Load the right value of m_midiCCEnable
 	m_midiCCEnable->loadSettings(thisElement, "enablecc");
+	m_midiThruEnable->loadSettings(thisElement, "midithru");
 
 	updatePitchRange();
 	unlock();

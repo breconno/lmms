@@ -388,6 +388,7 @@ void InstrumentTrackWindow::modelChanged()
 	m_noteStackingView->setModel(&m_track->m_noteStacking);
 	m_arpeggioView->setModel(&m_track->m_arpeggio);
 	m_midiView->setModel(&m_track->m_midiPort);
+	m_midiView->midiThruCheckBox()->setModel(m_track->midiThruModel());
 	m_effectView->setModel(m_track->m_audioBusHandle.effects());
 	m_tuningView->pitchGroupBox()->setModel(&m_track->m_useMasterPitchModel);
 	m_tuningView->microtunerGroupBox()->setModel(m_track->m_microtuner.enabledModel());

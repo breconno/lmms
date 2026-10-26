@@ -29,6 +29,7 @@
 #include <memory>
 
 #include "BasicFilters.h"
+#include "MidiEvent.h"
 #include "Note.h"
 #include "PlayHandle.h"
 #include "Track.h"
@@ -269,6 +270,12 @@ public:
 	}
 
 private:
+	//! Source to tag outgoing MIDI events with, so MIDI Thru can tell input notes apart
+	MidiEvent::Source midiEventSource() const
+	{
+		return m_fromMidiInput ? MidiEvent::Source::External : MidiEvent::Source::Internal;
+	}
+
 	class BaseDetuning
 	{
 	public:
@@ -328,6 +335,7 @@ private:
 
 	int m_midiChannel;
 	Origin m_origin;
+	bool m_fromMidiInput;					// set if this note or its parent came from MIDI input
 
 	bool m_frequencyNeedsUpdate;				// used to update pitch
 } ;

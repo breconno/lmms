@@ -52,6 +52,7 @@ public:
 	InstrumentMidiIOView( QWidget* parent );
 	~InstrumentMidiIOView() override = default;
 
+	LedCheckBox* midiThruCheckBox() { return m_midiThruCheckBox; }
 
 private:
 	void modelChanged() override;
@@ -66,6 +67,7 @@ private:
 	LcdSpinBox * m_fixedOutputVelocitySpinBox;
 	LcdSpinBox * m_outputProgramSpinBox;
 	LcdSpinBox * m_fixedOutputNoteSpinBox;
+	LedCheckBox * m_midiThruCheckBox;
 	QToolButton * m_wpBtn;
 
 	LcdSpinBox* m_baseVelocitySpinBox;
