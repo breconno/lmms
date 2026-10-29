@@ -22,7 +22,7 @@
  *
  */
 
-#include <QLabel>
+#include <QPainter>
 #include <QToolButton>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -40,6 +40,45 @@
 
 namespace lmms::gui
 {
+
+namespace
+{
+
+class MidiThruControl final : public QWidget
+{
+public:
+	MidiThruControl(LedCheckBox* button, const LcdSpinBox* reference, const QString& label, QWidget* parent) :
+		QWidget(parent),
+		m_reference(reference),
+		m_label(label)
+	{
+		const auto font = adjustedToPixelSize(reference->font(), DEFAULT_FONT_SIZE);
+		button->setParent(this);
+		button->setFixedWidth(embed::getIconPixmap("led_off").width());
+		setFixedSize(qMax(button->width(), QFontMetrics(font).horizontalAdvance(label) + 1),
+			reference->height());
+		button->move((width() - button->width()) / 2,
+			(reference->cellHeight() + 2 - button->height()) / 2);
+	}
+
+protected:
+	void paintEvent(QPaintEvent*) override
+	{
+		QPainter painter(this);
+		painter.setFont(adjustedToPixelSize(m_reference->font(), DEFAULT_FONT_SIZE));
+		const int x = width() / 2 - painter.fontMetrics().horizontalAdvance(m_label) / 2;
+		painter.setPen(m_reference->textShadowColor());
+		painter.drawText(x + 1, height(), m_label);
+		painter.setPen(m_reference->textColor());
+		painter.drawText(x, height() - 1, m_label);
+	}
+
+private:
+	const LcdSpinBox* m_reference;
+	QString m_label;
+};
+
+}
 
 
 InstrumentMidiIOView::InstrumentMidiIOView( QWidget* parent ) :
@@ -118,23 +157,11 @@ InstrumentMidiIOView::InstrumentMidiIOView( QWidget* parent ) :
 	m_fixedOutputNoteSpinBox->setEnabled( false );
 	midiOutputLayout->addWidget( m_fixedOutputNoteSpinBox );
 
-	auto midiThruControl = new QWidget(m_midiOutputGroupBox);
-	midiThruControl->setFixedHeight(m_fixedOutputNoteSpinBox->height());
-	auto midiThruLayout = new QVBoxLayout(midiThruControl);
-	midiThruLayout->setContentsMargins(0, 0, 0, 0);
-	midiThruLayout->setSpacing(0);
-
-	m_midiThruCheckBox = new LedCheckBox(midiThruControl);
+	m_midiThruCheckBox = new LedCheckBox(m_midiOutputGroupBox);
 	m_midiThruCheckBox->setAccessibleName(tr("MIDI Thru"));
 	m_midiThruCheckBox->setToolTip( tr( "Echo notes received from MIDI input to the MIDI output" ) );
-	midiThruLayout->addStretch();
-	midiThruLayout->addWidget(m_midiThruCheckBox, 0, Qt::AlignHCenter);
-	midiThruLayout->addStretch();
-	auto midiThruLabel = new QLabel(tr("THR"), midiThruControl);
-	midiThruLabel->setFont(adjustedToPixelSize(midiThruLabel->font(), DEFAULT_FONT_SIZE));
-	midiThruLabel->setFixedHeight(midiThruLabel->fontMetrics().height());
-	midiThruLabel->setAlignment(Qt::AlignHCenter | Qt::AlignBottom);
-	midiThruLayout->addWidget(midiThruLabel);
+	auto midiThruControl = new MidiThruControl(m_midiThruCheckBox, m_fixedOutputNoteSpinBox,
+		tr("THR"), m_midiOutputGroupBox);
 	midiThruControl->setEnabled(false);
 	midiOutputLayout->addWidget(midiThruControl);
 	midiOutputLayout->addStretch();
