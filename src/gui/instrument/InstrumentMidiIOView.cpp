@@ -22,6 +22,7 @@
  *
  */
 
+#include <QLabel>
 #include <QToolButton>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -31,6 +32,7 @@
 #include "AudioEngine.h"
 #include "Engine.h"
 #include "embed.h"
+#include "FontHelper.h"
 #include "GroupBox.h"
 #include "LcdSpinBox.h"
 #include "LedCheckBox.h"
@@ -116,10 +118,25 @@ InstrumentMidiIOView::InstrumentMidiIOView( QWidget* parent ) :
 	m_fixedOutputNoteSpinBox->setEnabled( false );
 	midiOutputLayout->addWidget( m_fixedOutputNoteSpinBox );
 
-	m_midiThruCheckBox = new LedCheckBox( tr( "THRU" ), m_midiOutputGroupBox );
+	auto midiThruControl = new QWidget(m_midiOutputGroupBox);
+	midiThruControl->setFixedHeight(m_fixedOutputNoteSpinBox->height());
+	auto midiThruLayout = new QVBoxLayout(midiThruControl);
+	midiThruLayout->setContentsMargins(0, 0, 0, 0);
+	midiThruLayout->setSpacing(0);
+
+	m_midiThruCheckBox = new LedCheckBox(midiThruControl);
+	m_midiThruCheckBox->setAccessibleName(tr("MIDI Thru"));
 	m_midiThruCheckBox->setToolTip( tr( "Echo notes received from MIDI input to the MIDI output" ) );
-	m_midiThruCheckBox->setEnabled( false );
-	midiOutputLayout->addWidget( m_midiThruCheckBox );
+	midiThruLayout->addStretch();
+	midiThruLayout->addWidget(m_midiThruCheckBox, 0, Qt::AlignHCenter);
+	midiThruLayout->addStretch();
+	auto midiThruLabel = new QLabel(tr("THR"), midiThruControl);
+	midiThruLabel->setFont(adjustedToPixelSize(midiThruLabel->font(), DEFAULT_FONT_SIZE));
+	midiThruLabel->setFixedHeight(midiThruLabel->fontMetrics().height());
+	midiThruLabel->setAlignment(Qt::AlignHCenter | Qt::AlignBottom);
+	midiThruLayout->addWidget(midiThruLabel);
+	midiThruControl->setEnabled(false);
+	midiOutputLayout->addWidget(midiThruControl);
 	midiOutputLayout->addStretch();
 
 	connect( m_midiOutputGroupBox->ledButton(), SIGNAL(toggled(bool)),
@@ -129,7 +146,7 @@ InstrumentMidiIOView::InstrumentMidiIOView( QWidget* parent ) :
 	connect( m_midiOutputGroupBox->ledButton(), SIGNAL(toggled(bool)),
 		m_fixedOutputNoteSpinBox, SLOT(setEnabled(bool)));
 	connect( m_midiOutputGroupBox->ledButton(), SIGNAL(toggled(bool)),
-		m_midiThruCheckBox, SLOT(setEnabled(bool)));
+		midiThruControl, SLOT(setEnabled(bool)));
 
 	if( !Engine::audioEngine()->midiClient()->isRaw() )
 	{
