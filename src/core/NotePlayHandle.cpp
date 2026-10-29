@@ -52,7 +52,8 @@ NotePlayHandle::NotePlayHandle( InstrumentTrack* instrumentTrack,
 								const Note& n,
 								NotePlayHandle *parent,
 								int midiEventChannel,
-								Origin origin ) :
+								Origin origin,
+								MidiEvent::Source midiEventSource ) :
 	PlayHandle( PlayHandle::Type::NotePlayHandle, _offset ),
 	Note(n),
 	m_pluginData( nullptr ),
@@ -79,7 +80,8 @@ NotePlayHandle::NotePlayHandle( InstrumentTrack* instrumentTrack,
 	m_songGlobalParentOffset( 0 ),
 	m_midiChannel( midiEventChannel >= 0 ? midiEventChannel : instrumentTrack->midiPort()->realOutputChannel() ),
 	m_origin( origin ),
-	m_fromMidiInput( origin == Origin::MidiInput || ( parent != nullptr && parent->m_fromMidiInput ) ),
+	m_fromMidiInput( (origin == Origin::MidiInput && midiEventSource == MidiEvent::Source::External)
+		|| (parent != nullptr && parent->m_fromMidiInput) ),
 	m_frequencyNeedsUpdate( false )
 {
 	lock();
@@ -631,7 +633,8 @@ NotePlayHandle * NotePlayHandleManager::acquire( InstrumentTrack* instrumentTrac
 				const Note& noteToPlay,
 				NotePlayHandle* parent,
 				int midiEventChannel,
-				NotePlayHandle::Origin origin )
+				NotePlayHandle::Origin origin,
+				MidiEvent::Source midiEventSource )
 {
 	// TODO: use some lockless data structures
 	s_mutex.lockForWrite();
@@ -639,7 +642,8 @@ NotePlayHandle * NotePlayHandleManager::acquire( InstrumentTrack* instrumentTrac
 	NotePlayHandle * nph = s_available[s_availableIndex--];
 	s_mutex.unlock();
 
-	new( (void*)nph ) NotePlayHandle( instrumentTrack, offset, frames, noteToPlay, parent, midiEventChannel, origin );
+	new( (void*)nph ) NotePlayHandle( instrumentTrack, offset, frames, noteToPlay, parent,
+		midiEventChannel, origin, midiEventSource );
 	return nph;
 }
 

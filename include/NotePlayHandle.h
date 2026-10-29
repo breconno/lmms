@@ -69,7 +69,8 @@ public:
 					const Note& noteToPlay,
 					NotePlayHandle* parent = nullptr,
 					int midiEventChannel = -1,
-					Origin origin = Origin::MidiClip );
+					Origin origin = Origin::MidiClip,
+					MidiEvent::Source midiEventSource = MidiEvent::Source::External );
 	~NotePlayHandle() override;
 
 	void * operator new ( size_t size, void * p )
@@ -335,7 +336,7 @@ private:
 
 	int m_midiChannel;
 	Origin m_origin;
-	bool m_fromMidiInput;					// set if this note or its parent came from MIDI input
+	bool m_fromMidiInput;					// set if this note or its parent came from external MIDI input
 
 	bool m_frequencyNeedsUpdate;				// used to update pitch
 } ;
@@ -354,7 +355,8 @@ public:
 					const Note& noteToPlay,
 					NotePlayHandle* parent = nullptr,
 					int midiEventChannel = -1,
-					NotePlayHandle::Origin origin = NotePlayHandle::Origin::MidiClip );
+					NotePlayHandle::Origin origin = NotePlayHandle::Origin::MidiClip,
+					MidiEvent::Source midiEventSource = MidiEvent::Source::External );
 	static void release( NotePlayHandle * nph );
 	static void extend( int i );
 	static void free();

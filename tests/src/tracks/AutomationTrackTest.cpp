@@ -23,6 +23,7 @@
  */
 
 #include <QtTest>
+#include <vector>
 
 
 #include "AutomationClip.h"
@@ -30,12 +31,37 @@
 #include "DetuningHelper.h"
 #include "InstrumentTrack.h"
 #include "MidiClip.h"
+#include "NotePlayHandle.h"
 #include "PatternClip.h"
 #include "PatternTrack.h"
 #include "PatternStore.h"
+#include "Piano.h"
 
 #include "Engine.h"
 #include "Song.h"
+
+namespace
+{
+
+class MidiSourceTrack : public lmms::InstrumentTrack
+{
+public:
+	using InstrumentTrack::InstrumentTrack;
+
+	void processInEvent(const lmms::MidiEvent& event, const lmms::TimePos&, lmms::f_cnt_t) override
+	{
+		events.push_back(event);
+	}
+
+	void processOutEvent(const lmms::MidiEvent& event, const lmms::TimePos&, lmms::f_cnt_t) override
+	{
+		events.push_back(event);
+	}
+
+	std::vector<lmms::MidiEvent> events;
+};
+
+}
 
 class AutomationTrackTest : public QObject
 {
@@ -51,6 +77,41 @@ private slots:
 	{
 		using namespace lmms;
 		Engine::destroy();
+	}
+
+	void testPianoPreviewIsInternalMidi()
+	{
+		using namespace lmms;
+		MidiSourceTrack track(Engine::getSong());
+		track.pianoModel()->handleKeyPress(60, 100);
+		track.pianoModel()->handleKeyRelease(60);
+		QCOMPARE(track.events.size(), std::size_t{2});
+		QCOMPARE(track.events[0].type(), MidiNoteOn);
+		QCOMPARE(track.events[1].type(), MidiNoteOff);
+		for (const auto& event : track.events)
+		{
+			QCOMPARE(event.source(), MidiEvent::Source::Internal);
+			QCOMPARE(event.key(), 60);
+		}
+	}
+
+	void testLiveNoteSourceSurvivesPlayback()
+	{
+		using namespace lmms;
+		for (auto source : {MidiEvent::Source::Internal, MidiEvent::Source::External})
+		{
+			MidiSourceTrack track(Engine::getSong());
+			NotePlayHandle parent(&track, 0, 1000, Note(), nullptr, -1,
+				NotePlayHandle::Origin::MidiInput, source);
+			parent.setVolume(80);
+			QCOMPARE(track.events.back().source(), source);
+			for (auto origin : {NotePlayHandle::Origin::NoteStacking, NotePlayHandle::Origin::Arpeggio})
+			{
+				NotePlayHandle child(&track, 0, 1000, Note(), &parent, -1, origin);
+				child.setVolume(80);
+				QCOMPARE(track.events.back().source(), source);
+			}
+		}
 	}
 
 	void testClipLinear()

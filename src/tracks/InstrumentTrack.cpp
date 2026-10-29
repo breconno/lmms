@@ -335,7 +335,7 @@ void InstrumentTrack::processInEvent( const MidiEvent& event, const TimePos& tim
 								Note(TimePos(), Engine::getSong()->getPlayPos(Engine::getSong()->playMode()),
 										event.key(), event.volume(midiPort()->baseVelocity())),
 								nullptr, event.channel(),
-								NotePlayHandle::Origin::MidiInput);
+								NotePlayHandle::Origin::MidiInput, event.source());
 					m_notes[event.key()] = nph;
 					if( ! Engine::audioEngine()->addPlayHandle( nph ) )
 					{
