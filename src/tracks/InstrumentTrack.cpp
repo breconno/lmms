@@ -402,6 +402,10 @@ void InstrumentTrack::processInEvent( const MidiEvent& event, const TimePos& tim
 									nph->totalFramesPlayed() /
 									Engine::framesPerTick() ) ) );
 								midiNoteOff( *nph );
+								if (nph->isFromExternalMidi())
+								{
+									externalNoteOff(*nph);
+								}
 							}
 						}
 					}
@@ -520,8 +524,11 @@ void InstrumentTrack::processOutEvent( const MidiEvent& event, const TimePos& ti
 
 
 
-void InstrumentTrack::setRecordArmed(bool)
+void InstrumentTrack::setRecordArmed(bool armed)
 {
+	if (armed == m_recordArmed) { return; }
+	m_recordArmed = armed;
+	emit recordArmChanged(armed);
 }
 
 

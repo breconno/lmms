@@ -270,6 +270,12 @@ public:
 		m_frequencyNeedsUpdate = true;
 	}
 
+	//! Whether this note, or its parent, came from an external MIDI device
+	bool isFromExternalMidi() const
+	{
+		return m_fromMidiInput;
+	}
+
 private:
 	//! Source to tag outgoing MIDI events with, so MIDI Thru can tell input notes apart
 	MidiEvent::Source midiEventSource() const

@@ -646,6 +646,8 @@ void Song::stop()
 		return;
 	}
 
+	emit aboutToStop(getPlayPos(PlayMode::Song));
+
 	using gui::TimeLineWidget;
 
 	// To avoid race conditions with the processing threads
