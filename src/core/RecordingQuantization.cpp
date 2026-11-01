@@ -22,12 +22,16 @@
 
 #include "RecordingQuantization.h"
 
+#include "TimePos.h"
+
 namespace lmms
 {
 
-tick_t resolveQuantization(tick_t, tick_t)
+tick_t resolveQuantization(tick_t gridTicks, tick_t noteLenTicks)
 {
-	return 0;
+	if (gridTicks > 0) { return gridTicks; }
+	if (noteLenTicks > 0) { return noteLenTicks; }
+	return DefaultTicksPerBar / 16;
 }
 
 } // namespace lmms

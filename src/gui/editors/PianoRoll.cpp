@@ -66,6 +66,7 @@
 #include "PatternStore.h"
 #include "PianoView.h"
 #include "PositionLine.h"
+#include "RecordingQuantization.h"
 #include "SimpleTextFloat.h"
 #include "SongEditor.h"
 #include "StepRecorderWidget.h"
@@ -4983,19 +4984,11 @@ void PianoRoll::keyChanged()
 
 int PianoRoll::quantization() const
 {
-	if( m_quantizeModel.value() == 0 )
-	{
-		if( m_noteLenModel.value() > 0 )
-		{
-			return newNoteLen();
-		}
-		else
-		{
-			return DefaultTicksPerBar / 16;
-		}
-	}
-
-	return DefaultTicksPerBar / Quantizations[m_quantizeModel.value() - 1];
+	const tick_t grid = m_quantizeModel.value() == 0
+		? 0
+		: DefaultTicksPerBar / Quantizations[m_quantizeModel.value() - 1];
+	const tick_t noteLen = m_noteLenModel.value() > 0 ? newNoteLen().getTicks() : 0;
+	return resolveQuantization(grid, noteLen);
 }
 
 
