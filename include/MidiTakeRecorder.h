@@ -107,7 +107,6 @@ private:
 	TrackTake* find(InstrumentTrack* track);
 	void commit(TrackTake& take, const Note& note);
 	void close();
-	void trackDestroyed(InstrumentTrack* track);
 
 	Song* m_song;
 	std::vector<std::unique_ptr<TrackTake>> m_takes;
