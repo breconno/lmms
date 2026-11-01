@@ -35,6 +35,7 @@
 #include "Keymap.h"
 #include "MidiClient.h"
 #include "MidiClip.h"
+#include "MidiTakeRecorder.h"
 #include "MixHelpers.h"
 #include "PatternStore.h"
 #include "PatternTrack.h"
@@ -526,7 +527,9 @@ void InstrumentTrack::processOutEvent( const MidiEvent& event, const TimePos& ti
 
 void InstrumentTrack::setRecordArmed(bool armed)
 {
-	if (armed == m_recordArmed) { return; }
+	// The armed tracks are fixed for the length of a take
+	const auto recorder = Engine::getSong() ? Engine::getSong()->midiTakeRecorder() : nullptr;
+	if (armed == m_recordArmed || (recorder && recorder->isActive())) { return; }
 	m_recordArmed = armed;
 	emit recordArmChanged(armed);
 }

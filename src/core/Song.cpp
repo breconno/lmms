@@ -857,6 +857,9 @@ void Song::clearProject()
 {
 	using gui::getGUI;
 
+	// The take's clips are about to be deleted, and nothing may be journalled
+	m_midiTakeRecorder->abort();
+
 	Engine::projectJournal()->setJournalling( false );
 
 	if( m_playing )

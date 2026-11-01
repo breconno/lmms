@@ -35,6 +35,15 @@ MidiTakeRecorder::MidiTakeRecorder(Song* song) :
 	QObject(song),
 	m_song(song)
 {
+	// Song::stop() can run on the render thread, so the stop is always queued.
+	// The take id is read here, when the stop happens, so that a stop from
+	// before a take started can't end that take.
+	connect(m_song, &Song::aboutToStop, this, [this](TimePos stopPos) {
+		const int id = m_takeId;
+		QMetaObject::invokeMethod(this, [this, id, stopPos] {
+			if (id == m_takeId) { stopAt(stopPos); }
+		}, Qt::QueuedConnection);
+	}, Qt::DirectConnection);
 }
 
 
@@ -48,18 +57,33 @@ MidiTakeRecorder::~MidiTakeRecorder()
 
 
 
-MidiTakeRecorder::StartResult MidiTakeRecorder::checkStart(const TakeParams&) const
+MidiTakeRecorder::StartResult MidiTakeRecorder::checkStart(const TakeParams& params) const
 {
 	if (m_active) { return StartResult::AlreadyActive; }
-	return StartResult::Started;
+	if (params.editorRecording) { return StartResult::EditorRecording; }
+	if (m_song->getTimeline(Song::PlayMode::Song).loopEnabled()) { return StartResult::LoopEnabled; }
+
+	const auto& tracks = m_song->tracks();
+	const bool anyArmed = std::any_of(tracks.begin(), tracks.end(), [](Track* track) {
+		auto instrumentTrack = dynamic_cast<InstrumentTrack*>(track);
+		return instrumentTrack && instrumentTrack->isRecordArmed();
+	});
+	return anyArmed ? StartResult::Started : StartResult::NoArmedTracks;
 }
 
 
 
 
-MidiTakeRecorder::StartResult MidiTakeRecorder::start(const TakeParams&)
+MidiTakeRecorder::StartResult MidiTakeRecorder::start(const TakeParams& params)
 {
-	return StartResult::AlreadyActive;
+	const auto result = checkStart(params);
+	if (result != StartResult::Started) { return result; }
+
+	if (m_song->isPlaying() || m_song->isPaused()) { m_song->stop(); }
+
+	startAt(params, m_song->getPlayPos(Song::PlayMode::Song));
+	m_song->playSong();
+	return StartResult::Started;
 }
 
 
@@ -91,6 +115,8 @@ MidiTakeRecorder::StartResult MidiTakeRecorder::startAt(const TakeParams& params
 			[this, instrumentTrack, id](const Note& note) {
 				if (id == m_takeId) { onNoteOff(instrumentTrack, note); }
 			}, Qt::QueuedConnection));
+		m_connections.push_back(connect(instrumentTrack, &Track::destroyedTrack, this,
+			[this, instrumentTrack] { trackDestroyed(instrumentTrack); }, Qt::DirectConnection));
 	}
 
 	m_active = true;
@@ -177,5 +203,13 @@ void MidiTakeRecorder::commit(TrackTake& take, const Note& note)
 	if (take.clip) { take.clip->addNote(note, false); }
 }
 
+
+
+
+void MidiTakeRecorder::trackDestroyed(InstrumentTrack* track)
+{
+	m_takes.erase(std::remove_if(m_takes.begin(), m_takes.end(),
+		[track](const auto& take) { return take->track == track; }), m_takes.end());
+}
 
 } // namespace lmms
