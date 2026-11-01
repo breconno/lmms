@@ -297,6 +297,158 @@ private slots:
 		recorder()->stopAt(2 * Bar);
 		QVERIFY(midiClips(track).empty());
 	}
+
+	// R9
+	void StartIsRefusedWithAReason()
+	{
+		using Result = MidiTakeRecorder::StartResult;
+		auto track = addTrack(false);
+		QCOMPARE(recorder()->start(params()), Result::NoArmedTracks);
+
+		track->setRecordArmed(true);
+		auto& timeline = song()->getTimeline(Song::PlayMode::Song);
+		timeline.setLoopEnabled(true);
+		QCOMPARE(recorder()->start(params()), Result::LoopEnabled);
+		QVERIFY(timeline.loopEnabled());
+		timeline.setLoopEnabled(false);
+
+		auto editorBusy = params();
+		editorBusy.editorRecording = true;
+		QCOMPARE(recorder()->start(editorBusy), Result::EditorRecording);
+
+		QVERIFY(!song()->isPlaying());
+		QVERIFY(track->isRecordArmed());
+
+		QCOMPARE(recorder()->startAt(params(), 0), Result::Started);
+		QCOMPARE(recorder()->start(params()), Result::AlreadyActive);
+		recorder()->stopAt(Bar);
+	}
+
+	void StartPlaysTheSongAndStopFinalizes()
+	{
+		auto track = addTrack(true);
+		song()->getTimeline(Song::PlayMode::Song).setTicks(Bar);
+		QSignalSpy active(recorder(), &MidiTakeRecorder::activeChanged);
+		QCOMPARE(recorder()->start(params()), MidiTakeRecorder::StartResult::Started);
+		QVERIFY(song()->isPlaying());
+		QCOMPARE(song()->playMode(), Song::PlayMode::Song);
+
+		recorder()->onNoteOn(track, liveNote(60, Bar));
+		song()->getTimeline(Song::PlayMode::Song).setTicks(2 * Bar);
+		song()->stop();
+		QVERIFY(recorder()->isActive());
+		QCoreApplication::processEvents();
+		QVERIFY(!recorder()->isActive());
+		QCOMPARE(active.count(), 2);
+		QCOMPARE(midiClips(track).size(), std::size_t{1});
+	}
+
+	// R10
+	void ClearingTheProjectDiscardsTheTake()
+	{
+		auto track = addTrack(true);
+		QCOMPARE(recorder()->startAt(params(), 0), MidiTakeRecorder::StartResult::Started);
+		recorder()->onNoteOn(track, liveNote(60, 10));
+		song()->clearProject();
+		QVERIFY(!recorder()->isActive());
+		QCoreApplication::processEvents();
+		QVERIFY(song()->tracks().empty());
+		QVERIFY(!Engine::projectJournal()->canUndo());
+	}
+
+	// R11
+	void DeletingATrackDuringATakeDropsOnlyThatTrack()
+	{
+		auto kept = addTrack(true);
+		auto deleted = addTrack(true);
+		QCOMPARE(recorder()->startAt(params(), 0), MidiTakeRecorder::StartResult::Started);
+		recorder()->onNoteOn(kept, liveNote(60, 10));
+		recorder()->onNoteOn(deleted, liveNote(62, 10));
+		delete deleted;
+		QCOMPARE(recorder()->trackCount(), std::size_t{1});
+		recorder()->onNoteOff(kept, liveNote(60, 10, 20));
+		recorder()->stopAt(Bar);
+		QCOMPARE(midiClips(kept).size(), std::size_t{1});
+	}
+
+	void DeletingTheTakeClipDropsTheRestOfThatTrack()
+	{
+		auto track = addTrack(true);
+		QCOMPARE(recorder()->startAt(params(), 0), MidiTakeRecorder::StartResult::Started);
+		recorder()->onNoteOn(track, liveNote(60, 10));
+		recorder()->onNoteOff(track, liveNote(60, 10, 20));
+		QCOMPARE(midiClips(track).size(), std::size_t{1});
+		delete midiClips(track)[0];
+		recorder()->onNoteOn(track, liveNote(62, 40));
+		recorder()->onNoteOff(track, liveNote(62, 40, 20));
+		recorder()->stopAt(Bar);
+		QVERIFY(midiClips(track).empty());
+	}
+
+	// R12, second part
+	void ArmingIsLockedDuringATake()
+	{
+		auto armed = addTrack(true);
+		auto unarmed = addTrack(false);
+		QCOMPARE(recorder()->startAt(params(), 0), MidiTakeRecorder::StartResult::Started);
+		armed->setRecordArmed(false);
+		unarmed->setRecordArmed(true);
+		QVERIFY(armed->isRecordArmed());
+		QVERIFY(!unarmed->isRecordArmed());
+		recorder()->stopAt(Bar);
+		armed->setRecordArmed(false);
+		QVERIFY(!armed->isRecordArmed());
+	}
+
+	// R13
+	void ArmingIsNotSaved()
+	{
+		auto track = addTrack(true);
+		track->midiPort()->setReadable(true);
+		track->midiPort()->setInputChannel(3);
+
+		auto doc = QDomDocument{};
+		auto parent = doc.createElement("clonedtrack");
+		track->saveState(doc, parent);
+		QVERIFY(!doc.toString().contains("arm", Qt::CaseInsensitive));
+		QVERIFY(!parent.firstChildElement().isNull());
+
+		auto loaded = dynamic_cast<InstrumentTrack*>(Track::create(parent.firstChildElement(), song()));
+		QVERIFY(loaded != nullptr);
+		QVERIFY(!loaded->isRecordArmed());
+		QCOMPARE(loaded->midiPort()->inputChannel(), 3);
+	}
+
+	// R14
+	void StopFromAnotherThreadFinalizesThroughTheQueue()
+	{
+		auto track = addTrack(true);
+		QCOMPARE(recorder()->startAt(params(), 0), MidiTakeRecorder::StartResult::Started);
+		recorder()->onNoteOn(track, liveNote(60, 10));
+
+		auto thread = QThread::create([] { emit song()->aboutToStop(TimePos(Bar)); });
+		thread->start();
+		QVERIFY(thread->wait(5000));
+		delete thread;
+		QVERIFY(recorder()->isActive());
+
+		QCoreApplication::processEvents();
+		QVERIFY(!recorder()->isActive());
+		const auto clips = midiClips(track);
+		QCOMPARE(clips.size(), std::size_t{1});
+		QCOMPARE(clips[0]->notes()[0]->endPos().getTicks(), Bar);
+	}
+
+	void StopBeforeATakeStartsIsIgnored()
+	{
+		auto track = addTrack(true);
+		emit song()->aboutToStop(TimePos(0));
+		QCOMPARE(recorder()->startAt(params(), 0), MidiTakeRecorder::StartResult::Started);
+		QCoreApplication::processEvents();
+		QVERIFY(recorder()->isActive());
+		recorder()->stopAt(Bar);
+		QVERIFY(midiClips(track).empty());
+	}
 };
 
 QTEST_GUILESS_MAIN(MidiTakeRecorderTest)
