@@ -20,10 +20,13 @@
  *
  */
 
+#include <algorithm>
+
 #include <QObject>
 #include <QSignalSpy>
 #include <QtTest>
 
+#include "AudioEngine.h"
 #include "Engine.h"
 #include "InstrumentTrack.h"
 #include "NotePlayHandle.h"
@@ -38,6 +41,21 @@ constexpr int Bar = DefaultTicksPerBar;
 constexpr int Sixteenth = DefaultTicksPerBar / 16;
 
 Song* song() { return Engine::getSong(); }
+
+//! Waits until the audio engine has picked up and finished the live notes of a
+//! track. A note that is still queued as a new play handle survives deleting
+//! its track, so tests wait for this before the next test clears the project.
+bool liveNotesFinished(Track* track)
+{
+	QTest::qWait(20);
+	auto engine = Engine::audioEngine();
+	engine->requestChangeInModel();
+	const auto& handles = engine->playHandles();
+	const bool finished = std::none_of(handles.begin(), handles.end(),
+		[track](PlayHandle* handle) { return handle->isFromTrack(track); });
+	engine->doneChangeInModel();
+	return finished;
+}
 
 InstrumentTrack* addTrack(bool armed)
 {
@@ -94,6 +112,7 @@ private slots:
 		playback.noteOff(0);
 		QCOMPARE(noteOn.count(), 1);
 		QCOMPARE(noteOff.count(), 1);
+		QTRY_VERIFY(liveNotesFinished(track));
 	}
 
 	void ExternalNoteOffAfterSustainRelease()
@@ -107,6 +126,7 @@ private slots:
 		QCOMPARE(noteOff.count(), 0);
 		track->processInEvent(MidiEvent(MidiControlChange, 0, MidiControllerSustain, 0));
 		QCOMPARE(noteOff.count(), 1);
+		QTRY_VERIFY(liveNotesFinished(track));
 	}
 
 	void AboutToStopCarriesSongPosition()

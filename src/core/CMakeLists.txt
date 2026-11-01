@@ -42,6 +42,7 @@ set(LMMS_SRCS
 	core/LocklessAllocator.cpp
 	core/MeterModel.cpp
 	core/MidiTakeBuffer.cpp
+	core/MidiTakeRecorder.cpp
 	core/Metronome.cpp
 	core/MicroTimer.cpp
 	core/Microtuner.cpp

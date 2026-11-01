@@ -46,6 +46,7 @@
 #include "Keymap.h"
 #include "NotePlayHandle.h"
 #include "MidiClip.h"
+#include "MidiTakeRecorder.h"
 #include "PatternEditor.h"
 #include "PatternStore.h"
 #include "PatternTrack.h"
@@ -133,6 +134,9 @@ Song::Song() :
 
 	// Inform VST plugins if the user moved the play head
 	connect(this, &Song::playbackPositionJumped, this, [this](){ m_vstSyncController.setPlaybackJumped(true); }, Qt::DirectConnection);
+
+	// Owned through the QObject parent
+	m_midiTakeRecorder = new MidiTakeRecorder(this);
 }
 
 
