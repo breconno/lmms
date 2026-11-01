@@ -24,6 +24,7 @@
 #define LMMS_MIDI_TAKE_BUFFER_H
 
 #include <functional>
+#include <optional>
 #include <vector>
 
 #include "Note.h"
@@ -69,7 +70,8 @@ public:
 	std::size_t pendingCount() const { return m_pending.size(); }
 
 private:
-	void commit(TimePos start, TimePos length, const Note& source);
+	//! recordStop is set for notes still held when the take stops
+	void commit(TimePos start, TimePos length, const Note& source, std::optional<TimePos> recordStop);
 
 	CommitFunction m_commit;
 	std::vector<Note> m_pending;

@@ -22,6 +22,8 @@
 
 #include "MidiTakeBuffer.h"
 
+#include <algorithm>
+
 namespace lmms
 {
 
@@ -33,15 +35,31 @@ void MidiTakeBuffer::setCommitFunction(CommitFunction commit)
 
 
 
-void MidiTakeBuffer::begin(TimePos, bool, tick_t)
+void MidiTakeBuffer::begin(TimePos recordStart, bool autoQuantize, tick_t quantTicks)
 {
+	m_pending.clear();
+	m_recordStart = recordStart;
+	m_clipStart = recordStart.toAbsoluteBar();
+	m_autoQuantize = autoQuantize;
+	m_quantTicks = quantTicks;
+	m_open = true;
 }
 
 
 
 
-void MidiTakeBuffer::finish(TimePos)
+void MidiTakeBuffer::finish(TimePos recordStop)
 {
+	if (!m_open) { return; }
+	m_open = false;
+
+	const auto pending = std::move(m_pending);
+	m_pending.clear();
+	for (const auto& note : pending)
+	{
+		if (note.pos() >= recordStop) { continue; }
+		commit(note.pos(), recordStop - note.pos(), note, recordStop);
+	}
 }
 
 
@@ -49,29 +67,61 @@ void MidiTakeBuffer::finish(TimePos)
 
 void MidiTakeBuffer::abort()
 {
+	m_open = false;
+	m_pending.clear();
 }
 
 
 
 
-bool MidiTakeBuffer::noteOn(const Note&)
+bool MidiTakeBuffer::noteOn(const Note& note)
 {
-	return false;
+	if (!m_open || note.pos() < m_recordStart) { return false; }
+	m_pending.push_back(note);
+	return true;
 }
 
 
 
 
-bool MidiTakeBuffer::noteOff(const Note&)
+bool MidiTakeBuffer::noteOff(const Note& note)
 {
-	return false;
+	if (!m_open) { return false; }
+
+	// Match on the start too: the same key can be held twice under the sustain pedal
+	const auto it = std::find_if(m_pending.begin(), m_pending.end(), [&note](const Note& pending) {
+		return pending.key() == note.key() && pending.pos() == note.pos();
+	});
+	if (it == m_pending.end()) { return false; }
+
+	const Note started = *it;
+	m_pending.erase(it);
+	commit(started.pos(), note.length(), started, std::nullopt);
+	return true;
 }
 
 
 
 
-void MidiTakeBuffer::commit(TimePos, TimePos, const Note&)
+void MidiTakeBuffer::commit(TimePos start, TimePos length, const Note& source, std::optional<TimePos> recordStop)
 {
+	auto note = Note(length, start - m_clipStart, source.key(), source.getVolume(), source.getPanning());
+	if (m_autoQuantize && m_quantTicks > 0)
+	{
+		note.quantizePos(m_quantTicks);
+		note.quantizeLength(m_quantTicks);
+	}
+
+	if (recordStop)
+	{
+		// A note still held at stop ends at stop, even after quantizing
+		const tick_t end = *recordStop - m_clipStart;
+		if (note.pos() >= end) { note.setPos(end - 1); }
+		if (note.endPos() > end) { note.setLength(end - note.pos()); }
+	}
+	note.setLength(std::max<tick_t>(note.length(), 1));
+
+	if (m_commit) { m_commit(note); }
 }
 
 } // namespace lmms
