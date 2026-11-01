@@ -201,6 +201,9 @@ protected slots:
 	void recordAccompany() override;
 	void stop() override;
 
+	//! Records live MIDI into a new clip on every armed instrument track
+	void recordMidi();
+
 	void lostFocus();
 	void adjustUiAfterProjectLoad();
 
@@ -211,6 +214,7 @@ signals:
 	void resized();
 
 private:
+	QAction* m_recordMidiAction;
 	QAction* m_addPatternTrackAction;
 	QAction* m_addSampleTrackAction;
 	QAction* m_addAutomationTrackAction;

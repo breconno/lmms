@@ -63,6 +63,7 @@
 #include "lmms_math.h"
 #include "MainWindow.h"
 #include "MidiClip.h"
+#include "MidiTakeRecorder.h"
 #include "PatternStore.h"
 #include "PianoView.h"
 #include "PositionLine.h"
@@ -4339,8 +4340,21 @@ void PianoRoll::play()
 
 
 
+bool PianoRoll::refuseDuringMidiTake() const
+{
+	if (!Engine::getSong()->midiTakeRecorder()->isActive()) { return false; }
+	TextFloat::displayMessage(tr("Recording"),
+		tr("Stop recording MIDI on armed tracks before recording in the Piano Roll."),
+		embed::getIconPixmap("record"), 3000);
+	return true;
+}
+
+
+
+
 void PianoRoll::record()
 {
+	if (refuseDuringMidiTake()) { return; }
 	if( Engine::getSong()->isPlaying() )
 	{
 		stop();
@@ -4364,6 +4378,7 @@ void PianoRoll::record()
 
 void PianoRoll::recordAccompany()
 {
+	if (refuseDuringMidiTake()) { return; }
 	if( Engine::getSong()->isPlaying() )
 	{
 		stop();
@@ -4400,7 +4415,7 @@ bool PianoRoll::toggleStepRecording()
 	{
 		m_stepRecorder.stop();
 	}
-	else
+	else if (!refuseDuringMidiTake())
 	{
 		if(hasValidMidiClip())
 		{
@@ -5517,6 +5532,22 @@ void PianoRollWindow::setCurrentMidiClip( MidiClip* clip )
 bool PianoRollWindow::isRecording() const
 {
 	return m_editor->isRecording();
+}
+
+
+
+
+bool PianoRollWindow::isStepRecording() const
+{
+	return m_editor->isStepRecording();
+}
+
+
+
+
+bool PianoRollWindow::doAutoQuantization() const
+{
+	return m_editor->doAutoQuantization();
 }
 
 
