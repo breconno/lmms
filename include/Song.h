@@ -474,6 +474,8 @@ signals:
 	void timeSignatureChanged( int oldTicksPerBar, int ticksPerBar );
 	void controllerAdded( lmms::Controller * );
 	void controllerRemoved( lmms::Controller * );
+	//! Emitted by stop() before the play position is reset, from the thread calling stop()
+	void aboutToStop(lmms::TimePos stopPos);
 	void stopped();
 	void modified();
 	void projectFileNameChanged();

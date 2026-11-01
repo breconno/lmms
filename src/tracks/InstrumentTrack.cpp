@@ -520,6 +520,13 @@ void InstrumentTrack::processOutEvent( const MidiEvent& event, const TimePos& ti
 
 
 
+void InstrumentTrack::setRecordArmed(bool)
+{
+}
+
+
+
+
 void InstrumentTrack::silenceAllNotes( bool removeIPH )
 {
 	m_midiNotesMutex.lock();

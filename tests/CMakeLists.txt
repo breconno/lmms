@@ -14,6 +14,7 @@ set(LMMS_TESTS
 	src/core/RelativePathsTest.cpp
 	src/core/TimelineTest.cpp
 	src/tracks/AutomationTrackTest.cpp
+	src/tracks/InstrumentTrackRecordingTest.cpp
 )
 
 foreach(LMMS_TEST_SRC IN LISTS LMMS_TESTS)
