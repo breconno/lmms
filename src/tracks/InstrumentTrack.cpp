@@ -348,11 +348,13 @@ void InstrumentTrack::processInEvent( const MidiEvent& event, const TimePos& tim
 			}
 
 		case MidiNoteOff:
+			// lock before the lookup: silenceAllNotes() clears m_notes and releases
+			// the handles under the same lock, possibly from another thread
+			Engine::audioEngine()->requestChangeInModel();
 			if( m_notes[event.key()] != nullptr )
 			{
 				// do actual note off and remove internal reference to NotePlayHandle (which itself will
 				// be deleted later automatically)
-				Engine::audioEngine()->requestChangeInModel();
 				m_notes[event.key()]->noteOff( offset );
 				if (isSustainPedalPressed() &&
 					m_notes[event.key()]->origin() ==
@@ -361,18 +363,20 @@ void InstrumentTrack::processInEvent( const MidiEvent& event, const TimePos& tim
 					m_sustainedNotes << m_notes[event.key()];
 				}
 				m_notes[event.key()] = nullptr;
-				Engine::audioEngine()->doneChangeInModel();
 			}
+			Engine::audioEngine()->doneChangeInModel();
 			eventHandled = true;
 			break;
 
 		case MidiKeyPressure:
+			Engine::audioEngine()->requestChangeInModel();
 			if( m_notes[event.key()] != nullptr )
 			{
 				// setVolume() calls processOutEvent() with MidiKeyPressure so the
 				// attached instrument will receive the event as well
 				m_notes[event.key()]->setVolume( event.volume( midiPort()->baseVelocity() ) );
 			}
+			Engine::audioEngine()->doneChangeInModel();
 			eventHandled = true;
 			break;
 
@@ -539,6 +543,9 @@ void InstrumentTrack::setRecordArmed(bool armed)
 
 void InstrumentTrack::silenceAllNotes( bool removeIPH )
 {
+	// lock before clearing m_notes so that MIDI input on another thread cannot
+	// look up a note between the clear and the release of its handle
+	Engine::audioEngine()->requestChangeInModel();
 	m_midiNotesMutex.lock();
 	for( int i = 0; i < NumKeys; ++i )
 	{
@@ -547,7 +554,6 @@ void InstrumentTrack::silenceAllNotes( bool removeIPH )
 	}
 	m_midiNotesMutex.unlock();
 
-	Engine::audioEngine()->requestChangeInModel();
 	// invalidate all NotePlayHandles and PresetPreviewHandles linked to this track
 	m_processHandles.clear();
 
