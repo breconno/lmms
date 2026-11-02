@@ -14,6 +14,7 @@ set(LMMS_TESTS
 	src/core/RelativePathsTest.cpp
 	src/core/TimelineTest.cpp
 	src/tracks/AutomationTrackTest.cpp
+	src/tracks/InstrumentTrackConcurrencyTest.cpp
 	src/tracks/InstrumentTrackRecordingTest.cpp
 	src/tracks/MidiTakeRecorderTest.cpp
 )
