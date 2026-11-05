@@ -279,6 +279,7 @@ MidiEvent InstrumentTrack::applyMasterKey( const MidiEvent& event )
 	{
 		case MidiNoteOn:
 		case MidiNoteOff:
+		{
 		case MidiKeyPressure:
 			copy.setKey( masterKey( event.key() ) );
 			break;
@@ -326,6 +327,7 @@ void InstrumentTrack::processInEvent( const MidiEvent& event, const TimePos& tim
 		case MidiNoteOn:
 			if( event.velocity() > 0 )
 			{
+				auto changesGuard = Engine::audioEngine()->requestChangesGuard();
 				// play a note only if it is not already playing and if it is within configured bounds
 				if (m_notes[event.key()] == nullptr && event.key() >= firstKey() && event.key() <= lastKey())
 				{
@@ -351,34 +353,39 @@ void InstrumentTrack::processInEvent( const MidiEvent& event, const TimePos& tim
 			// lock before the lookup: silenceAllNotes() clears m_notes and releases
 			// the handles under the same lock, possibly from another thread
 			Engine::audioEngine()->requestChangeInModel();
-			if( m_notes[event.key()] != nullptr )
+			NotePlayHandle * note = m_notes[event.key()];
+			if( note != nullptr )
 			{
 				// do actual note off and remove internal reference to NotePlayHandle (which itself will
 				// be deleted later automatically)
-				m_notes[event.key()]->noteOff( offset );
+				note->noteOff( offset );
 				if (isSustainPedalPressed() &&
-					m_notes[event.key()]->origin() ==
+					note->origin() ==
 					NotePlayHandle::Origin::MidiInput)
 				{
-					m_sustainedNotes << m_notes[event.key()];
+					m_sustainedNotes << note;
 				}
 				m_notes[event.key()] = nullptr;
 			}
 			Engine::audioEngine()->doneChangeInModel();
 			eventHandled = true;
 			break;
+		}
 
 		case MidiKeyPressure:
+		{
 			Engine::audioEngine()->requestChangeInModel();
-			if( m_notes[event.key()] != nullptr )
+			NotePlayHandle * note = m_notes[event.key()];
+			if( note != nullptr )
 			{
 				// setVolume() calls processOutEvent() with MidiKeyPressure so the
 				// attached instrument will receive the event as well
-				m_notes[event.key()]->setVolume( event.volume( midiPort()->baseVelocity() ) );
+				note->setVolume( event.volume( midiPort()->baseVelocity() ) );
 			}
 			Engine::audioEngine()->doneChangeInModel();
 			eventHandled = true;
 			break;
+		}
 
 		case MidiPitchBend:
 			// updatePitch() is connected to m_pitchModel::dataChanged() which will send out
@@ -545,17 +552,19 @@ void InstrumentTrack::silenceAllNotes( bool removeIPH )
 {
 	// lock before clearing m_notes so that MIDI input on another thread cannot
 	// look up a note between the clear and the release of its handle
-	Engine::audioEngine()->requestChangeInModel();
-	m_midiNotesMutex.lock();
-	for( int i = 0; i < NumKeys; ++i )
 	{
-		m_notes[i] = nullptr;
-		m_runningMidiNotes[i] = 0;
-	}
-	m_midiNotesMutex.unlock();
+		auto changesGuard = Engine::audioEngine()->requestChangesGuard();
+		m_midiNotesMutex.lock();
+		for( int i = 0; i < NumKeys; ++i )
+		{
+			m_notes[i] = nullptr;
+			m_runningMidiNotes[i] = 0;
+		}
+		m_midiNotesMutex.unlock();
 
-	// invalidate all NotePlayHandles and PresetPreviewHandles linked to this track
-	m_processHandles.clear();
+		// invalidate all NotePlayHandles and PresetPreviewHandles linked to this track
+		m_processHandles.clear();
+	}
 
 	auto flags = PlayHandle::Type::NotePlayHandle | PlayHandle::Type::PresetPreviewHandle;
 	if( removeIPH )
@@ -563,7 +572,6 @@ void InstrumentTrack::silenceAllNotes( bool removeIPH )
 		flags |= PlayHandle::Type::InstrumentPlayHandle;
 	}
 	Engine::audioEngine()->removePlayHandlesOfTypes( this, flags );
-	Engine::audioEngine()->doneChangeInModel();
 }
 
 

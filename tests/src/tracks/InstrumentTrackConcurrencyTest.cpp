@@ -77,18 +77,22 @@ private slots:
 			track.processInEvent(MidiEvent(MidiNoteOn, 0, 60, 100));
 			QVERIFY(waitForPeriods(2));
 
-			std::thread noteOffThread;
-			{
-				// Hold the model-change lock so the note-off parks on it, as the
-				// ALSA thread does while the GUI thread loads an instrument
-				const auto guard = Engine::audioEngine()->requestChangesGuard();
-				noteOffThread = std::thread([&track] {
-					track.processInEvent(MidiEvent(MidiNoteOff, 0, 60, 0));
-				});
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			std::atomic<bool> start = false;
+			std::atomic<int> ready = 0;
+			std::thread noteOffThread([&] {
+				++ready;
+				while (!start.load()) { std::this_thread::yield(); }
+				track.processInEvent(MidiEvent(MidiNoteOff, 0, 60, 0));
+			});
+			std::thread resetThread([&] {
+				++ready;
+				while (!start.load()) { std::this_thread::yield(); }
 				track.silenceAllNotes();
-			}
+			});
+			while (ready.load() != 2) { std::this_thread::yield(); }
+			start = true;
 			noteOffThread.join();
+			resetThread.join();
 
 			QVERIFY(waitForPeriods(2));
 		}
