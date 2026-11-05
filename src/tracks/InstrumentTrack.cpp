@@ -279,7 +279,6 @@ MidiEvent InstrumentTrack::applyMasterKey( const MidiEvent& event )
 	{
 		case MidiNoteOn:
 		case MidiNoteOff:
-		{
 		case MidiKeyPressure:
 			copy.setKey( masterKey( event.key() ) );
 			break;
@@ -350,6 +349,7 @@ void InstrumentTrack::processInEvent( const MidiEvent& event, const TimePos& tim
 			}
 
 		case MidiNoteOff:
+		{
 			// lock before the lookup: silenceAllNotes() clears m_notes and releases
 			// the handles under the same lock, possibly from another thread
 			Engine::audioEngine()->requestChangeInModel();
