@@ -33,6 +33,8 @@
 #include <QMdiArea>
 #include <QMdiSubWindow>
 #include <QMenu>
+#include <QPushButton>
+#include <QSignalBlocker>
 #include <QSpacerItem>
 #include <QVBoxLayout>
 
@@ -48,9 +50,11 @@
 #include "MidiClient.h"
 #include "MidiCCRackView.h"
 #include "MidiPortMenu.h"
+#include "MidiTakeRecorder.h"
 #include "Mixer.h"
 #include "MixerChannelLcdSpinBox.h"
 #include "MixerView.h"
+#include "Song.h"
 #include "TrackLabelButton.h"
 
 
@@ -139,6 +143,30 @@ InstrumentTrackView::InstrumentTrackView( InstrumentTrack * _it, TrackContainerV
 	m_activityIndicator->setFixedSize(8, 28);
 	m_activityIndicator->show();
 
+	m_recordArmButton = new QPushButton(getTrackSettingsWidget());
+	m_recordArmButton->setObjectName("btn-record-arm");
+	// Takes are recorded in Song mode, so only song tracks can be armed
+	m_recordArmButton->setVisible(_it->trackContainer() == Engine::getSong());
+	m_recordArmButton->setCheckable(true);
+	m_recordArmButton->setChecked(_it->isRecordArmed());
+	m_recordArmButton->setToolTip(tr("Arm for MIDI recording. \"Record MIDI on armed tracks\" in the "
+		"Song Editor records each armed track into a new clip. Undoing a take empties its clips "
+		"but leaves them on the timeline."));
+	connect(m_recordArmButton, &QPushButton::toggled, _it, [this, _it](bool armed) {
+		_it->setRecordArmed(armed);
+		// Arming is locked during a take, so show the state the track kept
+		const QSignalBlocker blocker(m_recordArmButton);
+		m_recordArmButton->setChecked(_it->isRecordArmed());
+	});
+	connect(_it, &InstrumentTrack::recordArmChanged, m_recordArmButton, [this](bool armed) {
+		const QSignalBlocker blocker(m_recordArmButton);
+		m_recordArmButton->setChecked(armed);
+	});
+	const auto recorder = Engine::getSong()->midiTakeRecorder();
+	m_recordArmButton->setEnabled(!recorder->isActive());
+	connect(recorder, &MidiTakeRecorder::activeChanged, m_recordArmButton,
+		[this](bool active) { m_recordArmButton->setEnabled(!active); });
+
 	auto masterLayout = new QVBoxLayout(getTrackSettingsWidget());
 	masterLayout->setContentsMargins(0, 1, 0, 0);
 	auto layout = new QHBoxLayout();
@@ -147,6 +175,7 @@ InstrumentTrackView::InstrumentTrackView( InstrumentTrack * _it, TrackContainerV
 	layout->addWidget(m_tlb);
 	layout->addWidget(m_mixerChannelNumber);
 	layout->addWidget(m_activityIndicator);
+	layout->addWidget(m_recordArmButton);
 	layout->addWidget(m_volumeKnob);
 	layout->addWidget(m_panningKnob);
 	masterLayout->addLayout(layout);

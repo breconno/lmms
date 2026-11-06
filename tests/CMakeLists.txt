@@ -8,10 +8,14 @@ set(LMMS_TESTS
 	src/core/AudioBufferTest.cpp
 	src/core/AutomatableModelTest.cpp
 	src/core/MathTest.cpp
+	src/core/MidiTakeBufferTest.cpp
 	src/core/ProjectVersionTest.cpp
+	src/core/RecordingQuantizationTest.cpp
 	src/core/RelativePathsTest.cpp
 	src/core/TimelineTest.cpp
 	src/tracks/AutomationTrackTest.cpp
+	src/tracks/InstrumentTrackRecordingTest.cpp
+	src/tracks/MidiTakeRecorderTest.cpp
 )
 
 foreach(LMMS_TEST_SRC IN LISTS LMMS_TESTS)

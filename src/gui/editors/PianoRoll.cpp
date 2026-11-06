@@ -63,9 +63,11 @@
 #include "lmms_math.h"
 #include "MainWindow.h"
 #include "MidiClip.h"
+#include "MidiTakeRecorder.h"
 #include "PatternStore.h"
 #include "PianoView.h"
 #include "PositionLine.h"
+#include "RecordingQuantization.h"
 #include "SimpleTextFloat.h"
 #include "SongEditor.h"
 #include "StepRecorderWidget.h"
@@ -4338,8 +4340,21 @@ void PianoRoll::play()
 
 
 
+bool PianoRoll::refuseDuringMidiTake() const
+{
+	if (!Engine::getSong()->midiTakeRecorder()->isActive()) { return false; }
+	TextFloat::displayMessage(tr("Recording"),
+		tr("Stop recording MIDI on armed tracks before recording in the Piano Roll."),
+		embed::getIconPixmap("record"), 3000);
+	return true;
+}
+
+
+
+
 void PianoRoll::record()
 {
+	if (refuseDuringMidiTake()) { return; }
 	if( Engine::getSong()->isPlaying() )
 	{
 		stop();
@@ -4363,6 +4378,7 @@ void PianoRoll::record()
 
 void PianoRoll::recordAccompany()
 {
+	if (refuseDuringMidiTake()) { return; }
 	if( Engine::getSong()->isPlaying() )
 	{
 		stop();
@@ -4399,7 +4415,7 @@ bool PianoRoll::toggleStepRecording()
 	{
 		m_stepRecorder.stop();
 	}
-	else
+	else if (!refuseDuringMidiTake())
 	{
 		if(hasValidMidiClip())
 		{
@@ -4983,19 +4999,11 @@ void PianoRoll::keyChanged()
 
 int PianoRoll::quantization() const
 {
-	if( m_quantizeModel.value() == 0 )
-	{
-		if( m_noteLenModel.value() > 0 )
-		{
-			return newNoteLen();
-		}
-		else
-		{
-			return DefaultTicksPerBar / 16;
-		}
-	}
-
-	return DefaultTicksPerBar / Quantizations[m_quantizeModel.value() - 1];
+	const tick_t grid = m_quantizeModel.value() == 0
+		? 0
+		: DefaultTicksPerBar / Quantizations[m_quantizeModel.value() - 1];
+	const tick_t noteLen = m_noteLenModel.value() > 0 ? newNoteLen().getTicks() : 0;
+	return resolveQuantization(grid, noteLen);
 }
 
 
@@ -5524,6 +5532,22 @@ void PianoRollWindow::setCurrentMidiClip( MidiClip* clip )
 bool PianoRollWindow::isRecording() const
 {
 	return m_editor->isRecording();
+}
+
+
+
+
+bool PianoRollWindow::isStepRecording() const
+{
+	return m_editor->isStepRecording();
+}
+
+
+
+
+bool PianoRollWindow::doAutoQuantization() const
+{
+	return m_editor->doAutoQuantization();
 }
 
 

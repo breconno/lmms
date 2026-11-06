@@ -29,6 +29,7 @@
 
 #include "InstrumentTrack.h"
 
+class QPushButton;
 
 namespace lmms::gui
 {
@@ -111,6 +112,7 @@ private:
 	Knob * m_volumeKnob;
 	Knob * m_panningKnob;
 	FadeButton * m_activityIndicator;
+	QPushButton* m_recordArmButton;
 
 	QMenu * m_midiMenu;
 

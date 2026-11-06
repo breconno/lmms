@@ -48,6 +48,7 @@
 #include "LcdSpinBox.h"
 #include "MainWindow.h"
 #include "MeterDialog.h"
+#include "MidiTakeRecorder.h"
 #include "Oscilloscope.h"
 #include "PianoRoll.h"
 #include "PositionLine.h"
@@ -934,6 +935,17 @@ SongEditorWindow::SongEditorWindow(Song* song) :
 	m_recordAccompanyAction->setToolTip(tr("Record samples from Audio-device while playing song or pattern track"));
 	m_stopAction->setToolTip(tr( "Stop song (Space)" ));
 
+	m_recordMidiAction = new QAction(embed::getIconPixmap("record"), tr("Record MIDI on armed tracks"), this);
+	m_recordMidiAction->setToolTip(tr("Record MIDI on armed tracks: each armed instrument track gets a new clip"));
+	connect(m_recordMidiAction, &QAction::triggered, this, &SongEditorWindow::recordMidi);
+	m_toolBar->insertAction(m_stopAction, m_recordMidiAction);
+	m_toolBar->widgetForAction(m_recordMidiAction)->setObjectName("recordMidiButton");
+
+	connect(song->midiTakeRecorder(), &MidiTakeRecorder::activeChanged, this, [this](bool active) {
+		m_editor->m_timeLine->setRecording(active);
+		m_editor->m_positionLine->setRecording(active);
+	});
+
 
 	// Track actions
 	DropToolBar *trackActionsToolBar = addDropToolBarToTop(tr("Track actions"));
@@ -1106,6 +1118,40 @@ void SongEditorWindow::recordAccompany()
 	m_editor->m_song->playAndRecord();
 	m_editor->m_timeLine->setRecording(true);
 	m_editor->m_positionLine->setRecording(true);
+}
+
+
+
+
+void SongEditorWindow::recordMidi()
+{
+	using StartResult = MidiTakeRecorder::StartResult;
+
+	const auto pianoRoll = getGUI()->pianoRoll();
+	auto params = MidiTakeRecorder::TakeParams{};
+	params.autoQuantize = pianoRoll->doAutoQuantization();
+	params.quantTicks = pianoRoll->quantization();
+	params.editorRecording = pianoRoll->isRecording() || pianoRoll->isStepRecording();
+
+	QString message;
+	switch (m_editor->m_song->midiTakeRecorder()->start(params))
+	{
+		case StartResult::Started:
+			return;
+		case StartResult::AlreadyActive:
+			message = tr("MIDI is already being recorded.");
+			break;
+		case StartResult::EditorRecording:
+			message = tr("Stop recording in the Piano Roll first.");
+			break;
+		case StartResult::NoArmedTracks:
+			message = tr("Arm at least one instrument track with its record button first.");
+			break;
+		case StartResult::LoopEnabled:
+			message = tr("Turn off the song loop first. Loop recording is not supported yet.");
+			break;
+	}
+	TextFloat::displayMessage(tr("Record MIDI"), message, embed::getIconPixmap("record"), 4000);
 }
 
 

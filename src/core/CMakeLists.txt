@@ -41,6 +41,8 @@ set(LMMS_SRCS
 	core/LinkedModelGroups.cpp
 	core/LocklessAllocator.cpp
 	core/MeterModel.cpp
+	core/MidiTakeBuffer.cpp
+	core/MidiTakeRecorder.cpp
 	core/Metronome.cpp
 	core/MicroTimer.cpp
 	core/Microtuner.cpp
@@ -64,6 +66,7 @@ set(LMMS_SRCS
 	core/ProjectJournal.cpp
 	core/ProjectRenderer.cpp
 	core/ProjectVersion.cpp
+	core/RecordingQuantization.cpp
 	core/RemotePlugin.cpp
 	core/RenderManager.cpp
 	core/RingBuffer.cpp

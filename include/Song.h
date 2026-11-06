@@ -48,6 +48,7 @@ namespace lmms
 class AutomationTrack;
 class Keymap;
 class MidiClip;
+class MidiTakeRecorder;
 class Scale;
 
 namespace gui
@@ -177,6 +178,12 @@ public:
 	inline bool isRecording() const
 	{
 		return m_recording;
+	}
+
+	//! Records live MIDI into new clips on every armed instrument track
+	MidiTakeRecorder* midiTakeRecorder() const
+	{
+		return m_midiTakeRecorder;
 	}
 	
 	inline void setLoopRenderCount(int count)
@@ -445,6 +452,8 @@ private:
 	bool m_loopMidiClip;
 
 	VstSyncController m_vstSyncController;
+
+	MidiTakeRecorder* m_midiTakeRecorder = nullptr;
     
 	int m_loopRenderCount;
 	int m_loopRenderRemaining;
@@ -474,6 +483,8 @@ signals:
 	void timeSignatureChanged( int oldTicksPerBar, int ticksPerBar );
 	void controllerAdded( lmms::Controller * );
 	void controllerRemoved( lmms::Controller * );
+	//! Emitted by stop() before the play position is reset, from the thread calling stop()
+	void aboutToStop(lmms::TimePos stopPos);
 	void stopped();
 	void modified();
 	void projectFileNameChanged();

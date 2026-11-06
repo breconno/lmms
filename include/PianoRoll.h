@@ -157,6 +157,11 @@ public:
 
 	int quantization() const;
 
+	bool doAutoQuantization() const
+	{
+		return m_doAutoQuantization;
+	}
+
 protected:
 	enum class QuantizeAction
 	{
@@ -200,6 +205,9 @@ protected:
 	void enterValue( NoteVector* nv );
 
 	void updateYScroll();
+
+	//! Shows a message and returns true while multi-track MIDI recording is active
+	bool refuseDuringMidiTake() const;
 
 protected slots:
 	void play();
@@ -579,6 +587,8 @@ public:
 	void stopRecording();
 
 	bool isRecording() const;
+	bool isStepRecording() const;
+	bool doAutoQuantization() const;
 
 	/*! \brief Resets settings to default when e.g. creating a new project */
 	void reset();

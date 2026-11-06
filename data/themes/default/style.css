@@ -433,6 +433,7 @@ QPushButton#btn-mute,
 QPushButton#btn-mute-inv,
 QPushButton#btn-mute-inv:checked,
 QPushButton#btn-solo,
+QPushButton#btn-record-arm,
 lmms--gui--TrackOperationsWidget QPushButton {
 	padding: 2;
 	min-height: 14;
@@ -458,6 +459,7 @@ QPushButton#btn-stepper-right,
 QPushButton#btn-mute,
 QPushButton#btn-mute-inv:checked,
 QPushButton#btn-solo,
+QPushButton#btn-record-arm,
 lmms--gui--TrackOperationsWidget QPushButton {
 	border: 1 solid #080b12;
 	border-top: 1 solid #0e1218;
@@ -486,6 +488,19 @@ QPushButton#btn-solo {
 	image: url("resources:headphones.svg");
 }
 
+QPushButton#btn-record-arm {
+	image: url("resources:record.png");
+}
+
+QPushButton#btn-record-arm:checked {
+	border: 1 solid #890120;
+	background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e2515b, stop:0.1 #d40237, stop:0.9 #d40237, stop:1 #900122);
+}
+
+QPushButton#btn-record-arm:disabled {
+	background: rgba(0, 0, 0, 30%);
+}
+
 QPushButton#btn-stepper-left {
 	image: url("resources:arrow-left.svg");
 }
@@ -503,6 +518,7 @@ QPushButton#btn-stepper-left:hover,
 QPushButton#btn-stepper-right:hover,
 QPushButton#btn-mute:hover,
 QPushButton#btn-solo:hover,
+QPushButton#btn-record-arm:hover,
 lmms--gui--TrackOperationsWidget QPushButton:hover {
 	background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 255, 255, 25%), stop:0.1 rgba(255, 255, 255, 7%), stop:0.9 transparent, stop:1 rgba(0, 0, 0, 35%));
 }

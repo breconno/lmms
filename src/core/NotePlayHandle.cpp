@@ -110,6 +110,7 @@ NotePlayHandle::NotePlayHandle( InstrumentTrack* instrumentTrack,
 	if( m_origin == Origin::MidiInput )
 	{
 		m_instrumentTrack->midiNoteOn( *this );
+		if (m_fromMidiInput) { m_instrumentTrack->externalNoteOn(*this); }
 	}
 
 	if (m_instrumentTrack->instrument() && m_instrumentTrack->instrument()->isSingleStreamed())
@@ -407,6 +408,7 @@ void NotePlayHandle::noteOff( const f_cnt_t _s )
 		{
 			setLength( TimePos( static_cast<f_cnt_t>( totalFramesPlayed() / Engine::framesPerTick() ) ) );
 			m_instrumentTrack->midiNoteOff( *this );
+			if (m_fromMidiInput) { m_instrumentTrack->externalNoteOff(*this); }
 		}
 	}
 }

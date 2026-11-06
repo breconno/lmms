@@ -46,6 +46,7 @@
 #include "Keymap.h"
 #include "NotePlayHandle.h"
 #include "MidiClip.h"
+#include "MidiTakeRecorder.h"
 #include "PatternEditor.h"
 #include "PatternStore.h"
 #include "PatternTrack.h"
@@ -133,6 +134,9 @@ Song::Song() :
 
 	// Inform VST plugins if the user moved the play head
 	connect(this, &Song::playbackPositionJumped, this, [this](){ m_vstSyncController.setPlaybackJumped(true); }, Qt::DirectConnection);
+
+	// Owned through the QObject parent
+	m_midiTakeRecorder = new MidiTakeRecorder(this);
 }
 
 
@@ -646,6 +650,8 @@ void Song::stop()
 		return;
 	}
 
+	emit aboutToStop(getPlayPos(PlayMode::Song));
+
 	using gui::TimeLineWidget;
 
 	// To avoid race conditions with the processing threads
@@ -850,6 +856,9 @@ AutomatedValueMap Song::automatedValuesAt(TimePos time, int clipNum) const
 void Song::clearProject()
 {
 	using gui::getGUI;
+
+	// The take's clips are about to be deleted, and nothing may be journalled
+	m_midiTakeRecorder->abort();
 
 	Engine::projectJournal()->setJournalling( false );
 

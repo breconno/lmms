@@ -82,6 +82,10 @@ public:
 		return m_sustainPedalPressed;
 	}
 
+	//! Whether multi-track MIDI recording records this track. Not saved.
+	bool isRecordArmed() const { return m_recordArmed; }
+	void setRecordArmed(bool armed);
+
 	f_cnt_t beatLen( NotePlayHandle * _n ) const;
 
 
@@ -267,6 +271,10 @@ signals:
 	void instrumentChanged();
 	void midiNoteOn( const lmms::Note& );
 	void midiNoteOff( const lmms::Note& );
+	//! Like midiNoteOn() and midiNoteOff(), but only for notes from external MIDI devices
+	void externalNoteOn(const lmms::Note&);
+	void externalNoteOff(const lmms::Note&);
+	void recordArmChanged(bool armed);
 	void newNote();
 	void endNote();
 
@@ -299,6 +307,8 @@ private:
 	QMutex m_midiNotesMutex;
 
 	bool m_sustainPedalPressed;
+
+	bool m_recordArmed = false;
 
 	bool m_silentBuffersProcessed;
 

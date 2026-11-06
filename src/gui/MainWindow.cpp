@@ -45,6 +45,7 @@
 #include "FileBrowser.h"
 #include "FileDialog.h"
 #include "Metronome.h"
+#include "MidiTakeRecorder.h"
 #include "MixerView.h"
 #include "GuiApplication.h"
 #include "ImportFilter.h"
@@ -1458,6 +1459,14 @@ void MainWindow::onExportProjectMidi()
 
 void MainWindow::exportProject(bool multiExport)
 {
+	// Rendering stops the song, which would end the take part way through
+	if (Engine::getSong()->midiTakeRecorder()->isActive())
+	{
+		TextFloat::displayMessage(tr("Export"), tr("Stop recording MIDI on armed tracks before exporting."),
+			embed::getIconPixmap("project_export"), 4000);
+		return;
+	}
+
 	QString const & projectFileName = Engine::getSong()->projectFileName();
 
 	FileDialog efd( getGUI()->mainWindow() );
