@@ -28,6 +28,7 @@
 #include <QWidget>
 
 class QPushButton;
+class QHBoxLayout;
 
 namespace lmms::gui
 {
@@ -49,6 +50,9 @@ public:
 	~TrackOperationsWidget() override = default;
 
 	TrackGrip* getTrackGrip() const { return m_trackGrip; }
+
+	//! @brief Add the optional record-arm control after the mute and solo controls.
+	void addRecordArmButton(QPushButton* button);
 
 protected:
 	//! @brief Repaint the trackOperationsWidget
@@ -88,6 +92,7 @@ private:
 	QPushButton * m_trackOps;
 	AutomatableButton* m_muteBtn;
 	AutomatableButton* m_soloBtn;
+	QHBoxLayout* m_operationsLayout;
 
 	friend class TrackView;
 

@@ -73,12 +73,12 @@ TrackOperationsWidget::TrackOperationsWidget(TrackView* parent)
 	m_trackGrip = new TrackGrip(m_trackView, this);
 	layout->addWidget(m_trackGrip);
 
-	// This widget holds the gear icon and the mute and solo
-	// buttons in a layout.
+	// This widget holds the gear, mute, solo, and optional record-arm buttons
+	// in a layout.
 	auto operationsWidget = new QWidget(this);
-	auto operationsLayout = new QHBoxLayout(operationsWidget);
-	operationsLayout->setContentsMargins(2, 6, 0, 6);
-	operationsLayout->setSpacing(2);
+	m_operationsLayout = new QHBoxLayout(operationsWidget);
+	m_operationsLayout->setContentsMargins(2, 6, 0, 6);
+	m_operationsLayout->setSpacing(2);
 
 	m_trackOps = new QPushButton(operationsWidget);
 	m_trackOps->setFocusPolicy( Qt::NoFocus );
@@ -95,9 +95,9 @@ TrackOperationsWidget::TrackOperationsWidget(TrackView* parent)
 	m_soloBtn->setToolTip(tr("Solo"));
 	m_soloBtn->setObjectName("btn-solo");
 
-	operationsLayout->addWidget(m_trackOps);
-	operationsLayout->addWidget(m_muteBtn);
-	operationsLayout->addWidget(m_soloBtn);
+	m_operationsLayout->addWidget(m_trackOps);
+	m_operationsLayout->addWidget(m_muteBtn);
+	m_operationsLayout->addWidget(m_soloBtn);
 
 	layout->addWidget(operationsWidget, 0, Qt::AlignTop | Qt::AlignLeading);
 
@@ -110,6 +110,13 @@ TrackOperationsWidget::TrackOperationsWidget(TrackView* parent)
 			this, SLOT(update()));
 
 	connect(m_trackView->getTrack(), SIGNAL(colorChanged()), this, SLOT(update()));
+}
+
+
+void TrackOperationsWidget::addRecordArmButton(QPushButton* button)
+{
+	Q_ASSERT(button != nullptr);
+	m_operationsLayout->addWidget(button);
 }
 
 

@@ -49,7 +49,10 @@ class TrackContainerView;
 
 
 const int DEFAULT_SETTINGS_WIDGET_WIDTH = 260;
-const int TRACK_OP_WIDTH = 78;
+// Four 20-pixel operation buttons plus the track grip and layout spacing.
+// The record-arm button is only visible for Song instrument tracks, but the
+// shared width keeps the track header and timeline aligned for every track.
+const int TRACK_OP_WIDTH = 98;
 // This shaves 150-ish pixels off track buttons,
 // ruled from config: ui.compacttrackbuttons
 const int DEFAULT_SETTINGS_WIDGET_WIDTH_COMPACT = 136;
