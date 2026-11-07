@@ -145,6 +145,7 @@ InstrumentTrackView::InstrumentTrackView( InstrumentTrack * _it, TrackContainerV
 
 	m_recordArmButton = new QPushButton(getTrackSettingsWidget());
 	m_recordArmButton->setObjectName("btn-record-arm");
+	m_recordArmButton->setAccessibleName(tr("MIDI recording arm"));
 	// Takes are recorded in Song mode, so only song tracks can be armed
 	m_recordArmButton->setVisible(_it->trackContainer() == Engine::getSong());
 	m_recordArmButton->setCheckable(true);
@@ -166,6 +167,7 @@ InstrumentTrackView::InstrumentTrackView( InstrumentTrack * _it, TrackContainerV
 	m_recordArmButton->setEnabled(!recorder->isActive());
 	connect(recorder, &MidiTakeRecorder::activeChanged, m_recordArmButton,
 		[this](bool active) { m_recordArmButton->setEnabled(!active); });
+	getTrackOperationsWidget()->addRecordArmButton(m_recordArmButton);
 
 	auto masterLayout = new QVBoxLayout(getTrackSettingsWidget());
 	masterLayout->setContentsMargins(0, 1, 0, 0);
@@ -175,7 +177,6 @@ InstrumentTrackView::InstrumentTrackView( InstrumentTrack * _it, TrackContainerV
 	layout->addWidget(m_tlb);
 	layout->addWidget(m_mixerChannelNumber);
 	layout->addWidget(m_activityIndicator);
-	layout->addWidget(m_recordArmButton);
 	layout->addWidget(m_volumeKnob);
 	layout->addWidget(m_panningKnob);
 	masterLayout->addLayout(layout);
