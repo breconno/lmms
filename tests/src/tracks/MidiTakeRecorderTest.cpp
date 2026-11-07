@@ -299,7 +299,7 @@ private slots:
 	}
 
 	// R9
-	void StartIsRefusedWithAReason()
+	void StartWithLoopEnabledIsAccepted()
 	{
 		using Result = MidiTakeRecorder::StartResult;
 		auto track = addTrack(false);
@@ -316,7 +316,7 @@ private slots:
 		editorBusy.editorRecording = true;
 		QCOMPARE(recorder()->start(editorBusy), Result::EditorRecording);
 
-		QVERIFY(!song()->isPlaying());
+		QVERIFY(song()->isPlaying());
 		QVERIFY(track->isRecordArmed());
 
 		QCOMPARE(recorder()->startAt(params(), 0), Result::Started);
