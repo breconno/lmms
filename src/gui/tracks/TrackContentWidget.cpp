@@ -179,6 +179,23 @@ void TrackContentWidget::removeClipView( ClipView * clipv )
 }
 
 
+QVector<ClipView*> TrackContentWidget::overlappingClipViews(const ClipView* clipView) const
+{
+	QVector<ClipView*> overlapping;
+	if (!clipView) { return overlapping; }
+
+	const auto clipGeometry = clipView->geometry();
+	for (auto* candidate : m_clipViews)
+	{
+		if (candidate->geometry().intersects(clipGeometry))
+		{
+			overlapping.append(candidate);
+		}
+	}
+	return overlapping;
+}
+
+
 
 
 void TrackContentWidget::update()

@@ -114,6 +114,9 @@ public:
 	// Method to get a QVector of Clips to be affected by a context menu action
 	QVector<ClipView *> getClickedClips();
 
+	//! Return the next clip index when cycling through an overlap stack.
+	static int nextOverlappingClipIndex(int currentIndex, int clipCount);
+
 	// Methods to remove, copy, cut, paste and mute a QVector of Clip views
 	void copy( QVector<ClipView *> clipvs );
 	void cut( QVector<ClipView *> clipvs );
@@ -163,7 +166,8 @@ protected:
 		Cut,
 		Copy,
 		Paste,
-		Mute
+		Mute,
+		SelectNextOverlapping
 	};
 
 	TrackView * m_trackView;
@@ -185,6 +189,7 @@ protected:
 	void contextMenuEvent( QContextMenuEvent * cme ) override;
 
 	void contextMenuAction( ContextMenuAction action );
+	void selectNextOverlappingClip();
 
 	//! @brief Change the ClipView's display when something being dragged enters it.
 	//!
