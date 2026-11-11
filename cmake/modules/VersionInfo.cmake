@@ -92,7 +92,7 @@ IF(Git_FOUND AND NOT FORCE_VERSION)
 	endif()
 
 	# If there is any build metadata, append it after a plus
-	if(BUILD_METADATA)
+	if(BUILD_METADATA AND FORCE_VERSION)
 		string(REPLACE ";" "." BUILD_METADATA "${BUILD_METADATA}")
 		set(FORCE_VERSION "${FORCE_VERSION}+${BUILD_METADATA}")
 	endif()
