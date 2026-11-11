@@ -62,7 +62,11 @@ void writeText(int fd, const char *text, std::size_t limit)
 	if (!text) { return; }
 	std::size_t length = 0;
 	while (text[length] && length < limit) { ++length; }
-	if (length > 0) { (void)write(fd, text, length); }
+	if (length > 0)
+	{
+		const auto result = write(fd, text, length);
+		(void)result;
+	}
 }
 
 void writeUnsigned(int fd, const char *label, unsigned long long value, int base)
@@ -74,7 +78,11 @@ void writeUnsigned(int fd, const char *label, unsigned long long value, int base
 	std::size_t out = 0;
 	for (const char *cursor = label; cursor && *cursor && out < sizeof(output); ++cursor) { output[out++] = *cursor; }
 	while (count && out < sizeof(output)) { output[out++] = digits[--count]; }
-	if (out) { (void)write(fd, output, out); }
+	if (out)
+	{
+		const auto result = write(fd, output, out);
+		(void)result;
+	}
 }
 
 void writeSignalAddress(int fd, const siginfo_t *info)
