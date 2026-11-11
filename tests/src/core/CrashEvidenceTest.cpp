@@ -31,7 +31,7 @@ void CrashEvidenceTest::crashEvidenceIsBoundedAndCorrelated()
 		CrashEvidence::initialize();
 		CrashEvidence::breadcrumb("midi.note_on");
 		CrashEvidence::breadcrumb("take.stop");
-		raise(SIGSEGV);
+		kill(getpid(), SIGSEGV);
 		_exit(99);
 	}
 	int status = 0;
