@@ -48,15 +48,6 @@ const char *runId = nullptr;
 
 const int fatalSignals[] = {SIGSEGV, SIGABRT, SIGBUS, SIGILL};
 
-int signalIndex(int signalNumber)
-{
-	for (int index = 0; index < 4; ++index)
-	{
-		if (fatalSignals[index] == signalNumber) { return index; }
-	}
-	return -1;
-}
-
 void writeText(int fd, const char *text, std::size_t limit)
 {
 	if (!text) { return; }
@@ -129,8 +120,17 @@ void crashHandler(int signalNumber, siginfo_t *info, void *)
 			}
 		}
 	}
-	const auto index = signalIndex(signalNumber);
-	if (index >= 0) { sigaction(signalNumber, &previousActions[index], nullptr); }
+	// Do not invoke a prior application/Qt handler here: it may return and turn
+	// a fatal signal into a normal exit. Restore the default disposition before
+	// re-raising so the kernel records the real terminating signal and core.
+	struct sigaction defaultAction{};
+	defaultAction.sa_handler = SIG_DFL;
+	sigemptyset(&defaultAction.sa_mask);
+	(void)sigaction(signalNumber, &defaultAction, nullptr);
+	sigset_t unblock;
+	sigemptyset(&unblock);
+	sigaddset(&unblock, signalNumber);
+	(void)sigprocmask(SIG_UNBLOCK, &unblock, nullptr);
 	(void)kill(getpid(), signalNumber);
 	_exit(128 + signalNumber);
 }
