@@ -14,6 +14,8 @@ public:
 	static void initialize();
 	static void shutdown();
 	static bool enabled();
+	static bool initializationFailed();
+	static const char *failureReason();
 	static void record(const char *kind, const char *status, const char *message = nullptr,
 					  const char *dataJson = nullptr);
 	static std::uint64_t droppedEvents();

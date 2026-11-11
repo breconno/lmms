@@ -55,6 +55,9 @@ std::string outputPath;
 std::uintmax_t outputBytes = 0;
 bool lifecycleEnabled = true;
 bool notesEnabled = false;
+bool diagnosticPayloadEnabled = false;
+std::atomic<bool> failure{false};
+std::atomic<const char *> failureMessage{nullptr};
 
 void copyText(char *destination, const char *source, std::size_t size)
 {
@@ -101,6 +104,8 @@ std::string timestamp(std::int64_t microsSinceEpoch)
 
 void reportWriteFailure(const char *operation)
 {
+	failure.store(true, std::memory_order_release);
+	failureMessage.store(operation, std::memory_order_release);
 	if (!writeFailed.exchange(true))
 	{
 		std::fprintf(stderr,
@@ -183,10 +188,40 @@ void Telemetry::initialize()
 	if (configured.exchange(true)) { return; }
 	const char *path = std::getenv("LMMS_TELEMETRY_PATH");
 	if (!path || !*path) { return; }
-	const char *lifecycle = std::getenv("LMMS_TELEMETRY_LIFECYCLE");
-	const char *notes = std::getenv("LMMS_TELEMETRY_NOTES");
-	lifecycleEnabled = !lifecycle || std::strcmp(lifecycle, "0") != 0;
-	notesEnabled = notes && std::strcmp(notes, "0") != 0;
+	const char *categories = std::getenv("LMMS_TELEMETRY_CATEGORIES");
+	const bool explicitCategories = categories && *categories;
+	const char *privacy = std::getenv("LMMS_TELEMETRY_PRIVACY");
+	diagnosticPayloadEnabled = privacy && std::strcmp(privacy, "full") == 0;
+	lifecycleEnabled = !explicitCategories;
+	notesEnabled = false;
+	if (explicitCategories)
+	{
+		for (const char *cursor = categories; *cursor; )
+		{
+			const char *end = std::strchr(cursor, ',');
+			const std::size_t length = end ? static_cast<std::size_t>(end - cursor) : std::strlen(cursor);
+			if (length == 9 && std::strncmp(cursor, "lifecycle", length) == 0) { lifecycleEnabled = true; }
+			if (length == 4 && std::strncmp(cursor, "midi", length) == 0) { notesEnabled = true; }
+			if (!end) { break; }
+			cursor = end + 1;
+		}
+	}
+	// Keep the legacy switches as compatibility aliases, but never enable
+	// high-volume MIDI data unless it was explicitly requested.
+	if (!explicitCategories)
+	{
+		if (const char *lifecycle = std::getenv("LMMS_TELEMETRY_LIFECYCLE"))
+		{
+			lifecycleEnabled = std::strcmp(lifecycle, "0") != 0;
+		}
+	}
+	if (!explicitCategories)
+	{
+		if (const char *notes = std::getenv("LMMS_TELEMETRY_NOTES"))
+		{
+			notesEnabled = std::strcmp(notes, "0") != 0;
+		}
+	}
 	const char *configuredRun = std::getenv("LMMS_RUN_ID");
 	runId = configuredRun && *configuredRun ? configuredRun :
 		("lmms-" + std::to_string(LMMS_GETPID()));
@@ -222,6 +257,17 @@ bool Telemetry::enabled()
 	return running.load(std::memory_order_acquire);
 }
 
+bool Telemetry::initializationFailed()
+{
+	return failure.load(std::memory_order_acquire);
+}
+
+const char *Telemetry::failureReason()
+{
+	const auto message = failureMessage.load(std::memory_order_acquire);
+	return message ? message : "";
+}
+
 void Telemetry::record(const char *kind, const char *status, const char *message,
 	const char *dataJson)
 {
@@ -229,7 +275,7 @@ void Telemetry::record(const char *kind, const char *status, const char *message
 	const bool isNote = kind && std::strncmp(kind, "midi.", 5) == 0;
 	if ((isNote && !notesEnabled) || (!isNote && !lifecycleEnabled)) { return; }
 	auto write = writeIndex.load(std::memory_order_relaxed);
-	for (;;)
+	for (int attempts = 0; attempts < 4; ++attempts)
 	{
 		const auto read = readIndex.load(std::memory_order_acquire);
 		if (write - read >= QueueSize)
@@ -239,15 +285,21 @@ void Telemetry::record(const char *kind, const char *status, const char *message
 		}
 		if (writeIndex.compare_exchange_weak(write, write + 1,
 			std::memory_order_acq_rel, std::memory_order_relaxed)) { break; }
+		if (attempts == 3)
+		{
+			dropped.fetch_add(1, std::memory_order_relaxed);
+			return;
+		}
 	}
+	if (writeIndex.load(std::memory_order_relaxed) <= write) { return; }
 	Event &event = queue[write % QueueSize];
 	event.sequence = sequence.fetch_add(1, std::memory_order_relaxed) + 1;
 	event.timestampMicros = std::chrono::duration_cast<std::chrono::microseconds>(
 		std::chrono::system_clock::now().time_since_epoch()).count();
 	copyText(event.kind, kind, sizeof(event.kind));
 	copyText(event.status, status, sizeof(event.status));
-	copyText(event.message, message, sizeof(event.message));
-	copyText(event.data, dataJson, sizeof(event.data));
+	copyText(event.message, diagnosticPayloadEnabled ? message : nullptr, sizeof(event.message));
+	copyText(event.data, diagnosticPayloadEnabled ? dataJson : nullptr, sizeof(event.data));
 	ready[write % QueueSize].store(true, std::memory_order_release);
 }
 

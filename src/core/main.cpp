@@ -373,6 +373,10 @@ int main( int argc, char * * argv )
 					new gui::MainApplication(argc, argv);
 
 	Telemetry::initialize();
+	if (Telemetry::initializationFailed())
+	{
+		std::fprintf(stderr, "LMMS telemetry disabled: %s\n", Telemetry::failureReason());
+	}
 	CrashEvidence::initialize();
 	std::atexit([] {
 		Telemetry::shutdown();
