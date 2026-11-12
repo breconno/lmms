@@ -14,6 +14,7 @@ set(LMMS_SRCS
 	core/base64.cpp
 	core/BufferManager.cpp
 	core/Clipboard.cpp
+	core/CrashEvidence.cpp
 	core/ComboBoxModel.cpp
 	core/ConfigManager.cpp
 	core/Controller.cpp
@@ -82,6 +83,7 @@ set(LMMS_SRCS
 	core/Song.cpp
 	core/TempoSyncKnobModel.cpp
 	core/ThreadPool.cpp
+	core/Telemetry.cpp
 	core/Timeline.cpp
 	core/TimePos.cpp
 	core/ToolPlugin.cpp

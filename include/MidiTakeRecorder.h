@@ -98,6 +98,8 @@ private:
 	struct TrackTake
 	{
 		InstrumentTrack* track = nullptr;
+		int takeId = 0;
+		std::size_t trackIndex = 0;
 		QPointer<MidiClip> clip;
 		bool clipCreated = false;
 		MidiTakeBuffer buffer;
