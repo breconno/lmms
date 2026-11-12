@@ -50,6 +50,7 @@
 #include "TextFloat.h"
 #include "TrackContainer.h"
 #include "TrackContainerView.h"
+#include "TrackContentWidget.h"
 #include "TrackView.h"
 
 namespace lmms::gui
@@ -926,6 +927,14 @@ void ClipView::contextMenuEvent( QContextMenuEvent * cme )
 			: tr("Mute/unmute selection (<%1> + middle click)")).arg(UI_CTRL_KEY),
 		[this](){ contextMenuAction( ContextMenuAction::Mute ); } );
 
+	if (m_trackView->getTrackContentWidget()->overlappingClipViews(this).size() > 1)
+	{
+		contextMenu.addAction(
+			embed::getIconPixmap("select_all"),
+			tr("Select next overlapping clip"),
+			[this](){ contextMenuAction(ContextMenuAction::SelectNextOverlapping); });
+	}
+
 	contextMenu.addSeparator();
 
 	QMenu colorMenu (tr("Clip color"), this);
@@ -969,7 +978,29 @@ void ClipView::contextMenuAction( ContextMenuAction action )
 		case ContextMenuAction::Mute:
 			toggleMute( active );
 			break;
+		case ContextMenuAction::SelectNextOverlapping:
+			selectNextOverlappingClip();
+			break;
 	}
+}
+
+void ClipView::selectNextOverlappingClip()
+{
+	const auto overlapping = m_trackView->getTrackContentWidget()->overlappingClipViews(this);
+	if (overlapping.size() < 2) { return; }
+
+	const auto current = overlapping.indexOf(this);
+	const auto next = overlapping[nextOverlappingClipIndex(current, overlapping.size())];
+	getGUI()->songEditor()->m_editor->selectAllClips(false);
+	next->setSelected(true);
+	next->raise();
+	next->setFocus(Qt::OtherFocusReason);
+}
+
+int ClipView::nextOverlappingClipIndex(int currentIndex, int clipCount)
+{
+	if (clipCount <= 0) { return 0; }
+	return (currentIndex + 1) % clipCount;
 }
 
 QVector<ClipView *> ClipView::getClickedClips()

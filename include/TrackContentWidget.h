@@ -96,6 +96,9 @@ public:
 		}
 	}
 
+	//! Return clips on this track whose visible ranges overlap the given clip.
+	QVector<ClipView*> overlappingClipViews(const ClipView* clipView) const;
+
 	//! @brief Returns whether a selection of Clips can be pasted into this
 	//! @param clipPos The position of the Clip slot being pasted on
 	//! @param de The DropEvent generated

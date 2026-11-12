@@ -60,8 +60,7 @@ public:
 		Started,
 		AlreadyActive,
 		EditorRecording,
-		NoArmedTracks,
-		LoopEnabled
+		NoArmedTracks
 	};
 
 	explicit MidiTakeRecorder(Song* song);
@@ -102,12 +101,15 @@ private:
 		std::size_t trackIndex = 0;
 		QPointer<MidiClip> clip;
 		bool clipCreated = false;
+		bool autoQuantize = false;
+		tick_t quantTicks = 0;
 		MidiTakeBuffer buffer;
 	};
 
 	StartResult checkStart(const TakeParams& params) const;
 	TrackTake* find(InstrumentTrack* track);
 	void commit(TrackTake& take, const Note& note);
+	void finishLoopPass();
 	void close();
 	void trackDestroyed(InstrumentTrack* track);
 
@@ -115,6 +117,9 @@ private:
 	std::vector<std::unique_ptr<TrackTake>> m_takes;
 	std::vector<QMetaObject::Connection> m_connections;
 	bool m_active = false;
+	bool m_looping = false;
+	TimePos m_loopBegin = 0;
+	TimePos m_loopEnd = 0;
 
 	//! Identifies the current take, so that queued events of an earlier
 	//! take or from before this one started are ignored. Read from any thread.

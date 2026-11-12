@@ -28,6 +28,7 @@
 #include "CrashEvidence.h"
 #include "MidiClip.h"
 #include "Song.h"
+#include "Timeline.h"
 #include "Telemetry.h"
 
 namespace lmms
@@ -63,7 +64,6 @@ MidiTakeRecorder::StartResult MidiTakeRecorder::checkStart(const TakeParams& par
 {
 	if (m_active) { return StartResult::AlreadyActive; }
 	if (params.editorRecording) { return StartResult::EditorRecording; }
-	if (m_song->getTimeline(Song::PlayMode::Song).loopEnabled()) { return StartResult::LoopEnabled; }
 
 	const auto& tracks = m_song->tracks();
 	const bool anyArmed = std::any_of(tracks.begin(), tracks.end(), [](Track* track) {
@@ -89,7 +89,13 @@ MidiTakeRecorder::StartResult MidiTakeRecorder::start(const TakeParams& params)
 
 	if (m_song->isPlaying() || m_song->isPaused()) { m_song->stop(); }
 
-	startAt(params, m_song->getPlayPos(Song::PlayMode::Song));
+	const auto& timeline = m_song->getTimeline(Song::PlayMode::Song);
+	const auto current = m_song->getPlayPos(Song::PlayMode::Song);
+	const auto recordStart = timeline.loopEnabled() &&
+		(current < timeline.loopBegin() || current >= timeline.loopEnd())
+		? timeline.loopBegin() : current;
+	if (recordStart != current) { m_song->setPlayPos(recordStart.getTicks()); }
+	startAt(params, recordStart);
 	m_song->playSong();
 	return StartResult::Started;
 }
@@ -108,6 +114,10 @@ MidiTakeRecorder::StartResult MidiTakeRecorder::startAt(const TakeParams& params
 	}
 
 	const int id = ++m_takeId;
+	const auto& timeline = m_song->getTimeline(Song::PlayMode::Song);
+	m_looping = timeline.loopEnabled();
+	m_loopBegin = timeline.loopBegin();
+	m_loopEnd = timeline.loopEnd();
 	for (Track* track : m_song->tracks())
 	{
 		auto instrumentTrack = dynamic_cast<InstrumentTrack*>(track);
@@ -115,6 +125,8 @@ MidiTakeRecorder::StartResult MidiTakeRecorder::startAt(const TakeParams& params
 
 		auto take = std::make_unique<TrackTake>();
 		take->track = instrumentTrack;
+		take->autoQuantize = params.autoQuantize;
+		take->quantTicks = params.quantTicks;
 		TrackTake* takePtr = take.get();
 		take->buffer.setCommitFunction([this, takePtr](const Note& note) { commit(*takePtr, note); });
 		take->buffer.begin(recordStart, params.autoQuantize, params.quantTicks);
@@ -130,6 +142,17 @@ MidiTakeRecorder::StartResult MidiTakeRecorder::startAt(const TakeParams& params
 			}, Qt::QueuedConnection));
 		m_connections.push_back(connect(instrumentTrack, &Track::destroyedTrack, this,
 			[this, instrumentTrack] { trackDestroyed(instrumentTrack); }, Qt::DirectConnection));
+	}
+	if (m_looping)
+	{
+		m_connections.push_back(connect(&timeline, &Timeline::positionJumped, this,
+			[this, id] {
+				if (id != m_takeId || !m_active ||
+					m_song->getPlayPos(Song::PlayMode::Song) != m_loopBegin) { return; }
+				QMetaObject::invokeMethod(this, [this, id] {
+					if (id == m_takeId) { finishLoopPass(); }
+				}, Qt::QueuedConnection);
+			}, Qt::DirectConnection));
 	}
 
 	m_active = true;
@@ -174,9 +197,24 @@ void MidiTakeRecorder::close()
 	m_takes.clear();
 	// Invalidate anything still queued for this take
 	++m_takeId;
+	m_looping = false;
 	m_active = false;
 	Telemetry::record("take.closed", "success");
 	emit activeChanged(false);
+}
+
+
+
+void MidiTakeRecorder::finishLoopPass()
+{
+	if (!m_active || !m_looping) { return; }
+	for (auto& take : m_takes)
+	{
+		take->buffer.finish(m_loopEnd);
+		take->clip = nullptr;
+		take->clipCreated = false;
+		take->buffer.begin(m_loopBegin, take->autoQuantize, take->quantTicks);
+	}
 }
 
 

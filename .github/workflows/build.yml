@@ -80,6 +80,8 @@ jobs:
         run: |
           cd build/tests
           ctest --output-on-failure -j2
+        env:
+          QT_QPA_PLATFORM: offscreen
       - name: Package
         run: |
           cmake --build build --target package
@@ -163,6 +165,8 @@ jobs:
         run: |
           cd build/tests
           ctest --output-on-failure -j2
+        env:
+          QT_QPA_PLATFORM: offscreen
       - name: Package
         run: |
           cmake --build build --target package

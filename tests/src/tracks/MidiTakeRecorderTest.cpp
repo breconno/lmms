@@ -299,7 +299,7 @@ private slots:
 	}
 
 	// R9
-	void StartIsRefusedWithAReason()
+	void StartWithLoopEnabledIsAccepted()
 	{
 		using Result = MidiTakeRecorder::StartResult;
 		auto track = addTrack(false);
@@ -308,20 +308,63 @@ private slots:
 		track->setRecordArmed(true);
 		auto& timeline = song()->getTimeline(Song::PlayMode::Song);
 		timeline.setLoopEnabled(true);
-		QCOMPARE(recorder()->start(params()), Result::LoopEnabled);
+		QCOMPARE(recorder()->start(params()), Result::Started);
 		QVERIFY(timeline.loopEnabled());
-		timeline.setLoopEnabled(false);
+		recorder()->stopAt(Bar);
 
 		auto editorBusy = params();
 		editorBusy.editorRecording = true;
 		QCOMPARE(recorder()->start(editorBusy), Result::EditorRecording);
 
-		QVERIFY(!song()->isPlaying());
+		QVERIFY(song()->isPlaying());
 		QVERIFY(track->isRecordArmed());
 
 		QCOMPARE(recorder()->startAt(params(), 0), Result::Started);
 		QCOMPARE(recorder()->start(params()), Result::AlreadyActive);
 		recorder()->stopAt(Bar);
+	}
+
+	void LoopPassesCreateSeparateAdditiveClips()
+	{
+		auto track = addTrack(true);
+		auto& timeline = song()->getTimeline(Song::PlayMode::Song);
+		timeline.setLoopPoints(Bar, 2 * Bar);
+		timeline.setLoopEnabled(true);
+		QCOMPARE(recorder()->startAt(params(), Bar), MidiTakeRecorder::StartResult::Started);
+
+		recorder()->onNoteOn(track, liveNote(60, Bar + 10));
+		recorder()->onNoteOff(track, liveNote(60, Bar + 10, 20));
+		timeline.setTicks(Bar);
+		QCoreApplication::processEvents();
+		recorder()->onNoteOn(track, liveNote(64, Bar + 30));
+		recorder()->onNoteOff(track, liveNote(64, Bar + 30, 20));
+		recorder()->stopAt(2 * Bar);
+
+		const auto clips = midiClips(track);
+		QCOMPARE(clips.size(), std::size_t{2});
+		QCOMPARE(clips[0]->notes().size(), std::size_t{1});
+		QCOMPARE(clips[1]->notes().size(), std::size_t{1});
+		QCOMPARE(clips[0]->notes()[0]->key(), 60);
+		QCOMPARE(clips[1]->notes()[0]->key(), 64);
+	}
+
+	void LoopHeldNotesAreClampedAndDoNotDuplicate()
+	{
+		auto track = addTrack(true);
+		auto& timeline = song()->getTimeline(Song::PlayMode::Song);
+		timeline.setLoopPoints(Bar, 2 * Bar);
+		timeline.setLoopEnabled(true);
+		QCOMPARE(recorder()->startAt(params(), Bar), MidiTakeRecorder::StartResult::Started);
+		recorder()->onNoteOn(track, liveNote(60, 2 * Bar - 10));
+		timeline.setTicks(Bar);
+		QCoreApplication::processEvents();
+		recorder()->onNoteOff(track, liveNote(60, 2 * Bar - 10, 100));
+		recorder()->stopAt(2 * Bar);
+
+		const auto clips = midiClips(track);
+		QCOMPARE(clips.size(), std::size_t{1});
+		QCOMPARE(clips[0]->notes().size(), std::size_t{1});
+		QCOMPARE(clips[0]->notes()[0]->endPos(), TimePos{Bar});
 	}
 
 	void StartPlaysTheSongAndStopFinalizes()

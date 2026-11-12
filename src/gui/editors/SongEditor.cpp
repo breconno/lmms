@@ -1147,9 +1147,6 @@ void SongEditorWindow::recordMidi()
 		case StartResult::NoArmedTracks:
 			message = tr("Arm at least one instrument track with its record button first.");
 			break;
-		case StartResult::LoopEnabled:
-			message = tr("Turn off the song loop first. Loop recording is not supported yet.");
-			break;
 	}
 	TextFloat::displayMessage(tr("Record MIDI"), message, embed::getIconPixmap("record"), 4000);
 }

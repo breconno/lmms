@@ -37,7 +37,7 @@ IF(Git_FOUND AND NOT FORCE_VERSION)
 	# Untagged versions contain at least 2 dashes, giving 3 strings on split.
 	# Hence, for untagged versions TAG_LIST_LENGTH = [dashes in latest tag] + 3.
 	# Corollary: if TAG_LIST_LENGTH <= 2, the version must be tagged.
-	IF(TAG_LIST_LENGTH GREATER 0)
+	IF(GIT_TAG AND TAG_LIST_LENGTH GREATER 0)
 		# Set FORCE_VERSION to TAG_LIST[0], strip any 'v's to get MAJ.MIN.PAT
 		LIST(GET TAG_LIST 0 FORCE_VERSION)
 		STRING(REPLACE "v" "" FORCE_VERSION "${FORCE_VERSION}")
@@ -92,7 +92,7 @@ IF(Git_FOUND AND NOT FORCE_VERSION)
 	endif()
 
 	# If there is any build metadata, append it after a plus
-	if(BUILD_METADATA)
+	if(BUILD_METADATA AND FORCE_VERSION)
 		string(REPLACE ";" "." BUILD_METADATA "${BUILD_METADATA}")
 		set(FORCE_VERSION "${FORCE_VERSION}+${BUILD_METADATA}")
 	endif()
