@@ -54,9 +54,11 @@
 #endif
 
 #include <csignal>  // To register the signal handler
+#include <cstdlib>
 
 #include "MainApplication.h"
 #include "ConfigManager.h"
+#include "CrashEvidence.h"
 #include "DataFile.h"
 #include "NotePlayHandle.h"
 #include "embed.h"
@@ -70,6 +72,7 @@
 #include "ProjectRenderer.h"
 #include "RenderManager.h"
 #include "Song.h"
+#include "Telemetry.h"
 
 #ifdef LMMS_DEBUG_FPE
 #include <fenv.h> // For feenableexcept
@@ -368,6 +371,18 @@ int main( int argc, char * * argv )
 	QCoreApplication * app = coreOnly ?
 			new QCoreApplication( argc, argv ) :
 					new gui::MainApplication(argc, argv);
+
+	Telemetry::initialize();
+	if (Telemetry::initializationFailed())
+	{
+		std::fprintf(stderr, "LMMS telemetry disabled: %s\n", Telemetry::failureReason());
+	}
+	CrashEvidence::initialize();
+	std::atexit([] {
+		Telemetry::shutdown();
+		CrashEvidence::shutdown();
+	});
+	Telemetry::record("process.ready", "running");
 
 	OutputSettings os(44100, 160, OutputSettings::BitDepth::Depth16Bit, OutputSettings::StereoMode::JointStereo);
 	ProjectRenderer::ExportFileFormat eff = ProjectRenderer::ExportFileFormat::Wave;

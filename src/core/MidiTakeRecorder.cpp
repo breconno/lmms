@@ -25,9 +25,11 @@
 #include <algorithm>
 
 #include "InstrumentTrack.h"
+#include "CrashEvidence.h"
 #include "MidiClip.h"
 #include "Song.h"
 #include "Timeline.h"
+#include "Telemetry.h"
 
 namespace lmms
 {
@@ -76,8 +78,14 @@ MidiTakeRecorder::StartResult MidiTakeRecorder::checkStart(const TakeParams& par
 
 MidiTakeRecorder::StartResult MidiTakeRecorder::start(const TakeParams& params)
 {
+	CrashEvidence::breadcrumb("take.start");
 	const auto result = checkStart(params);
-	if (result != StartResult::Started) { return result; }
+	if (result != StartResult::Started)
+	{
+		Telemetry::record("take.start.refused", "failure", nullptr,
+			"{\"reason\":\"start-rejected\"}");
+		return result;
+	}
 
 	if (m_song->isPlaying() || m_song->isPaused()) { m_song->stop(); }
 
@@ -98,7 +106,12 @@ MidiTakeRecorder::StartResult MidiTakeRecorder::start(const TakeParams& params)
 MidiTakeRecorder::StartResult MidiTakeRecorder::startAt(const TakeParams& params, TimePos recordStart)
 {
 	const auto result = checkStart(params);
-	if (result != StartResult::Started) { return result; }
+	if (result != StartResult::Started)
+	{
+		Telemetry::record("take.start.refused", "failure", nullptr,
+			"{\"reason\":\"start-at-rejected\"}");
+		return result;
+	}
 
 	const int id = ++m_takeId;
 	const auto& timeline = m_song->getTimeline(Song::PlayMode::Song);
@@ -143,6 +156,9 @@ MidiTakeRecorder::StartResult MidiTakeRecorder::startAt(const TakeParams& params
 	}
 
 	m_active = true;
+	Telemetry::record("take.started", "running", nullptr,
+		("{\"take_id\":" + std::to_string(id) + ",\"tracks\":" +
+		 std::to_string(m_takes.size()) + "}").c_str());
 	emit activeChanged(true);
 	return StartResult::Started;
 }
@@ -152,7 +168,9 @@ MidiTakeRecorder::StartResult MidiTakeRecorder::startAt(const TakeParams& params
 
 void MidiTakeRecorder::abort()
 {
+	CrashEvidence::breadcrumb("take.abort");
 	if (!m_active) { return; }
+	Telemetry::record("take.aborted", "success");
 	for (auto& take : m_takes) { take->buffer.abort(); }
 	close();
 }
@@ -162,7 +180,9 @@ void MidiTakeRecorder::abort()
 
 void MidiTakeRecorder::stopAt(TimePos stopPos)
 {
+	CrashEvidence::breadcrumb("take.stop");
 	if (!m_active) { return; }
+	Telemetry::record("take.stop.requested", "running");
 	for (auto& take : m_takes) { take->buffer.finish(stopPos); }
 	close();
 }
@@ -179,6 +199,7 @@ void MidiTakeRecorder::close()
 	++m_takeId;
 	m_looping = false;
 	m_active = false;
+	Telemetry::record("take.closed", "success");
 	emit activeChanged(false);
 }
 
@@ -201,7 +222,9 @@ void MidiTakeRecorder::finishLoopPass()
 
 void MidiTakeRecorder::onNoteOn(InstrumentTrack* track, const Note& note)
 {
+	CrashEvidence::breadcrumb("midi.note_on");
 	if (!m_active) { return; }
+	Telemetry::record("midi.note_on", "running");
 	if (auto take = find(track)) { take->buffer.noteOn(note); }
 }
 
@@ -210,7 +233,9 @@ void MidiTakeRecorder::onNoteOn(InstrumentTrack* track, const Note& note)
 
 void MidiTakeRecorder::onNoteOff(InstrumentTrack* track, const Note& note)
 {
+	CrashEvidence::breadcrumb("midi.note_off");
 	if (!m_active) { return; }
+	Telemetry::record("midi.note_off", "running");
 	if (auto take = find(track)) { take->buffer.noteOff(note); }
 }
 
@@ -246,6 +271,7 @@ void MidiTakeRecorder::commit(TrackTake& take, const Note& note)
 
 void MidiTakeRecorder::trackDestroyed(InstrumentTrack* track)
 {
+	Telemetry::record("track.destroyed", "success");
 	m_takes.erase(std::remove_if(m_takes.begin(), m_takes.end(),
 		[track](const auto& take) { return take->track == track; }), m_takes.end());
 }

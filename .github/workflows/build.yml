@@ -291,7 +291,8 @@ jobs:
             -${{ hashFiles('Brewfile.lock.json') }}"
   mingw:
     name: mingw64
-    runs-on: ubuntu-latest
+    # The dependency bootstrap still uses apt-key and the focal MinGW PPA.
+    runs-on: ubuntu-24.04
     env:
       CMAKE_OPTS: >-
         -Werror=dev
