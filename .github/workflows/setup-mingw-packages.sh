@@ -12,9 +12,16 @@
 
 keyring=/etc/apt/keyrings/tobydox-mingw-w64.gpg
 install -d -m 0755 "$(dirname "$keyring")"
-gpg --batch --yes --no-default-keyring --keyring "$keyring" \
-  --keyserver hkps://keyserver.ubuntu.com \
+apt-get update -y
+apt-get install -y --no-install-recommends dirmngr gnupg
+gnupg_home=$(mktemp -d)
+chmod 700 "$gnupg_home"
+GNUPGHOME="$gnupg_home" gpg --batch --keyserver hkps://keyserver.ubuntu.com \
   --recv-keys 9C0C72C11E0AF891 02FE5F12ADDE29B2
+GNUPGHOME="$gnupg_home" gpg --batch --export \
+  9C0C72C11E0AF891 02FE5F12ADDE29B2 > "$keyring"
+rm -rf "$gnupg_home"
+chmod 0644 "$keyring"
 sh -c "echo 'deb [signed-by=$keyring] http://ppa.launchpad.net/tobydox/mingw-w64/ubuntu focal main' > \
   /etc/apt/sources.list.d/tobydox-mingw-w64.list"
 apt-get update -y
